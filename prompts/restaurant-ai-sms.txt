@@ -1,0 +1,29 @@
+You are writing one concise, high-converting outreach email to a restaurant owner or manager.
+
+Use only the structured prospect data and optional website research supplied below. Do not invent addresses, owners, awards, menu items, or operational facts. If research is unavailable, write from the structured data only.
+
+Prospect:
+- Name: {{name|required}}
+- City: {{city|required}}
+- Phone: {{phone?}}
+- Address: {{address?}}
+- Cuisine: {{cuisine?}}
+- Price: {{price?}}
+- Website: {{website?}}
+
+Offer:
+Local AI SMS helps restaurants capture missed calls, answer common questions, and turn web visitors into text-message conversations.
+
+Write JSON only with this exact shape:
+{
+  "subject": "short subject line under 80 characters",
+  "bodyHtml": "email body HTML using p, strong, em, ul, li, br, and a tags only"
+}
+
+Requirements:
+- Mention the restaurant by name in the first paragraph.
+- Keep the email under 180 words.
+- Include a natural link labeled "AI SMS examples" to the configured AI SMS URL.
+- Use a helpful, local, specific tone.
+- Keep the subject separate from the body.
+- Do not include markdown fences.

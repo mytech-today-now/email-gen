@@ -1,0 +1,17 @@
+[
+  {
+    "id": 501,
+    "company": "Example Company",
+    "contactName": "Jane Smith",
+    "industry": "Manufacturing",
+    "website": "https://example.com/",
+    "city": "Omaha"
+  },
+  {
+    "id": 502,
+    "company": "Unicode Café & Supply",
+    "contactName": "Renée O'Neil",
+    "active": true,
+    "website": "https://example.org/"
+  }
+]

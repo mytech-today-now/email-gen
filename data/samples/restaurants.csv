@@ -1,0 +1,5 @@
+id,name,city,phone,address,cuisine,price,website
+1,Acadian Grille & Bar,Omaha,(402) 933-0980,"725 N 114th St, Omaha, NE 68154",Cajun / Creole,$$,https://acadiangrille.com/
+2,Tomo Sushi & Ramen,Omaha,(402) 884-9044,"210 N 114th St, Omaha, NE 68154",Japanese / Sushi / Ramen,$$,https://www.tomosushine.com/
+199,Vidlak's Brookside Cafe,Omaha,(402) 330-0914,"15668 W Center Rd, Omaha, NE 68130",American Breakfast / Diner,$,https://vidlaksbrooksidecafe.com/
+200,Birrieria El Chalan,Omaha,(402) 734-2488,"4516 S 24th St, Omaha, NE 68107",Mexican / Birria,$,https://www.visitomaha.com/listings/birrieria-el-chalan/66048/

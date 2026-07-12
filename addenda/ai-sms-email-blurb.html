@@ -1,0 +1,621 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI-Powered SMS Pickup Ordering | myTech.Today</title>
+    <style>
+      /* Email-safe CSS: Inline where possible, limited properties, mobile-first */
+      body {
+        margin: 0;
+        padding: 0;
+        font-family:
+          "Inter",
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          Roboto,
+          sans-serif;
+        background-color: #f8fafc;
+        color: #111827;
+        line-height: 1.5;
+      }
+      .container {
+        max-width: 640px;
+        margin: 0 auto;
+        background-color: #ffffff;
+      }
+      .header {
+        background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+        color: #ffffff;
+        padding: 48px 24px 40px;
+        text-align: center;
+      }
+      .logo {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 24px;
+      }
+      .hero-title {
+        font-family: "Playfair Display", Georgia, serif;
+        font-size: 42px;
+        line-height: 1.05;
+        font-weight: 700;
+        margin: 0 0 16px;
+      }
+      @media (max-width: 480px) {
+        .hero-title {
+          font-size: 32px;
+        }
+      }
+      .hero-subtitle {
+        font-size: 20px;
+        color: #dbeafe;
+        max-width: 480px;
+        margin: 0 auto 32px;
+      }
+      .btn {
+        display: inline-block;
+        padding: 16px 32px;
+        font-size: 18px;
+        font-weight: 600;
+        text-decoration: none;
+        border-radius: 9999px;
+        margin: 8px;
+        transition: all 0.2s;
+      }
+      .btn-primary {
+        background-color: #ffffff;
+        color: #10b981;
+        box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+      }
+      .btn-secondary {
+        background-color: transparent;
+        color: #ffffff;
+        border: 2px solid rgba(255, 255, 255, 0.8);
+      }
+      .section {
+        padding: 48px 24px;
+      }
+      .card {
+        background-color: #ffffff;
+        border-radius: 24px;
+        padding: 32px;
+        margin-bottom: 24px;
+        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+      }
+      .step {
+        text-align: center;
+        margin-bottom: 40px;
+      }
+      .step-number {
+        width: 80px;
+        height: 80px;
+        background-color: #ecfdf5;
+        color: #10b981;
+        border-radius: 9999px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 36px;
+        margin: 0 auto 24px;
+      }
+      .benefit-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 24px;
+      }
+      .demo-phone {
+        max-width: 340px;
+        margin: 32px auto;
+        background: #111827;
+        border: 14px solid #111827;
+        border-radius: 48px;
+        padding: 12px;
+        box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+      }
+      .demo-screen {
+        background: #f8fafc;
+        border-radius: 36px;
+        height: 520px;
+        overflow: hidden;
+        position: relative;
+      }
+      .chat-bubble {
+        padding: 14px 20px;
+        border-radius: 20px;
+        margin-bottom: 16px;
+        max-width: 80%;
+      }
+      .user-bubble {
+        background-color: #ffffff;
+        margin-left: auto;
+        border-bottom-left-radius: 4px;
+      }
+      .ai-bubble {
+        background-color: #10b981;
+        color: #ffffff;
+        margin-right: auto;
+        border-bottom-right-radius: 4px;
+      }
+      .pricing-box {
+        background: linear-gradient(145deg, #f0fdf4, #ffffff);
+        border: 3px solid #10b981;
+        border-radius: 24px;
+        padding: 40px 24px;
+        text-align: center;
+      }
+      .footer {
+        background-color: #111827;
+        color: #9ca3af;
+        padding: 40px 24px;
+        font-size: 14px;
+        text-align: center;
+      }
+      a {
+        color: #10b981;
+      }
+      @media only screen and (max-width: 600px) {
+        .container {
+          width: 100% !important;
+        }
+        .section {
+          padding: 40px 20px !important;
+        }
+        .hero-title {
+          font-size: 36px !important;
+        }
+      }
+    </style>
+  </head>
+  <body style="margin: 0; padding: 0; background: #f1f5f9">
+    <div
+      class="container"
+      style="max-width: 640px; margin: 0 auto; background: #ffffff; box-shadow: 0 0 30px rgba(0, 0, 0, 0.05)"
+    >
+      <!-- HEADER -->
+      <div
+        class="header"
+        style="
+          background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+          color: #fff;
+          padding: 60px 24px 48px;
+          text-align: center;
+        "
+      >
+        <div style="margin-bottom: 32px">
+          <div
+            style="
+              display: inline-flex;
+              align-items: center;
+              gap: 12px;
+              background: rgba(255, 255, 255, 0.15);
+              padding: 12px 24px;
+              border-radius: 9999px;
+            "
+          >
+            <div
+              style="
+                width: 48px;
+                height: 48px;
+                background: linear-gradient(135deg, #10b981, #34d399);
+                border-radius: 9999px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 28px;
+                font-weight: bold;
+                color: #fff;
+              "
+            >
+              mT
+            </div>
+            <div style="font-size: 28px; font-weight: 700; letter-spacing: -1px">myTech.Today</div>
+          </div>
+        </div>
+
+        <h1
+          style="
+            font-family: Georgia, &quot;Playfair Display&quot;, serif;
+            font-size: 42px;
+            line-height: 1.05;
+            margin: 0 0 20px;
+            font-weight: 700;
+          "
+        >
+          AI-Powered SMS<br />Pickup Ordering
+        </h1>
+
+        <p style="font-size: 20px; color: #dbeafe; max-width: 460px; margin: 0 auto 32px">
+          Turn your existing phone number into a 24/7 AI ordering powerhouse. Customers text naturally. Orders
+          go straight to your POS.
+        </p>
+
+        <div style="margin: 32px 0">
+          <a
+            href="tel:8477674914"
+            class="btn btn-primary"
+            style="
+              background: #fff;
+              color: #10b981;
+              padding: 18px 36px;
+              font-size: 19px;
+              font-weight: 700;
+              text-decoration: none;
+              border-radius: 9999px;
+              display: inline-block;
+              margin: 8px;
+            "
+            >📞 Call for Free Demo</a
+          >
+          <a
+            href="#demo"
+            class="btn btn-secondary"
+            style="
+              color: #fff;
+              border: 2px solid rgba(255, 255, 255, 0.85);
+              padding: 18px 36px;
+              font-size: 19px;
+              font-weight: 600;
+              text-decoration: none;
+              border-radius: 9999px;
+              display: inline-block;
+              margin: 8px;
+            "
+            >Try Live Demo</a
+          >
+        </div>
+
+        <div
+          style="
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            flex-wrap: wrap;
+            font-size: 14px;
+            color: #bfdbfe;
+          "
+        >
+          <div>✅ POS Integrated</div>
+          <div>✅ 24/7 Live</div>
+          <div>✅ No Setup Fees</div>
+          <div>✅ Zero No-Shows</div>
+        </div>
+      </div>
+
+      <!-- DEMO PHONE -->
+      <div id="demo" style="padding: 48px 24px; background: #f8fafc; text-align: center">
+        <div style="max-width: 340px; margin: 0 auto">
+          <div class="demo-phone">
+            <div
+              class="demo-screen"
+              style="
+                background: #f8fafc;
+                height: 520px;
+                overflow: hidden;
+                border-radius: 32px;
+                position: relative;
+              "
+            >
+              <!-- Phone status bar -->
+              <div
+                style="
+                  height: 28px;
+                  background: #111827;
+                  color: #fff;
+                  display: flex;
+                  align-items: center;
+                  justify-content: space-between;
+                  padding: 0 20px;
+                  font-size: 12px;
+                "
+              >
+                <div>9:41</div>
+                <div>🍕 Tony's Pizza</div>
+                <div>100%</div>
+              </div>
+
+              <!-- Chat -->
+              <div style="padding: 20px; height: calc(100% - 28px); overflow-y: auto; font-size: 15px">
+                <div style="display: flex; margin-bottom: 24px">
+                  <div
+                    style="
+                      background: #e5e7eb;
+                      width: 36px;
+                      height: 36px;
+                      border-radius: 9999px;
+                      flex-shrink: 0;
+                      margin-right: 12px;
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      font-size: 20px;
+                    "
+                  >
+                    👤
+                  </div>
+                  <div style="max-width: 75%">
+                    <div
+                      class="chat-bubble user-bubble"
+                      style="background: #fff; padding: 14px 20px; border-radius: 20px 20px 4px 20px"
+                    >
+                      Large pepperoni, extra cheese, no onions
+                    </div>
+                  </div>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; margin-bottom: 24px">
+                  <div style="max-width: 75%">
+                    <div
+                      class="chat-bubble ai-bubble"
+                      style="
+                        background: #10b981;
+                        color: #fff;
+                        padding: 14px 20px;
+                        border-radius: 20px 20px 20px 4px;
+                      "
+                    >
+                      ✅ Confirmed!<br />
+                      <span style="font-size: 13px; opacity: 0.9">Ready in 18 min • $26.99</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div style="text-align: center; margin-top: 40px; font-size: 13px; color: #64748b">
+                  Text <strong style="font-family: monospace">(818) 867-9761</strong> from your phone to try
+                  live
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <a
+          href="tel:+18188679761"
+          style="
+            display: inline-block;
+            margin-top: 24px;
+            background: #10b981;
+            color: #fff;
+            padding: 14px 32px;
+            border-radius: 9999px;
+            text-decoration: none;
+            font-weight: 600;
+          "
+          >Text Now: (818) 867-9761</a
+        >
+      </div>
+
+      <!-- HOW IT WORKS -->
+      <div class="section" style="background: #ffffff">
+        <h2
+          style="
+            text-align: center;
+            font-size: 32px;
+            font-family: Georgia, &quot;Playfair Display&quot;, serif;
+            margin: 0 0 12px;
+          "
+        >
+          How It Works
+        </h2>
+        <p style="text-align: center; color: #475569; max-width: 420px; margin: 0 auto 48px">
+          Your customers text your existing number and enjoy natural AI conversation with your full menu.
+        </p>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 32px">
+          <!-- Step 1 -->
+          <div style="text-align: center">
+            <div
+              style="
+                width: 80px;
+                height: 80px;
+                background: #ecfdf5;
+                color: #10b981;
+                border-radius: 9999px;
+                margin: 0 auto 20px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 42px;
+              "
+            >
+              1
+            </div>
+            <h3 style="font-size: 22px; margin: 0 0 12px">Text to Order</h3>
+            <p style="color: #64748b; margin: 0">
+              Customer texts your current phone number. No app. No new number.
+            </p>
+          </div>
+          <!-- Step 2 -->
+          <div style="text-align: center">
+            <div
+              style="
+                width: 80px;
+                height: 80px;
+                background: #ecfdf5;
+                color: #10b981;
+                border-radius: 9999px;
+                margin: 0 auto 20px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 42px;
+              "
+            >
+              2
+            </div>
+            <h3 style="font-size: 22px; margin: 0 0 12px">AI Conversation</h3>
+            <p style="color: #64748b; margin: 0">
+              Natural language AI handles customizations, specials, and modifications instantly.
+            </p>
+          </div>
+          <!-- Step 3 -->
+          <div style="text-align: center">
+            <div
+              style="
+                width: 80px;
+                height: 80px;
+                background: #ecfdf5;
+                color: #10b981;
+                border-radius: 9999px;
+                margin: 0 auto 20px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 42px;
+              "
+            >
+              3
+            </div>
+            <h3 style="font-size: 22px; margin: 0 0 12px">Instant Fulfillment</h3>
+            <p style="color: #64748b; margin: 0">
+              Order paid, confirmed, and sent directly to your POS system.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- BENEFITS -->
+      <div class="section" style="background: #f8fafc">
+        <h2
+          style="
+            text-align: center;
+            font-size: 32px;
+            font-family: Georgia, &quot;Playfair Display&quot;, serif;
+            margin: 0 0 48px;
+          "
+        >
+          Why Restaurants Love It
+        </h2>
+
+        <div
+          class="benefit-grid"
+          style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px"
+        >
+          <div class="card">
+            <div style="font-size: 42px; margin-bottom: 20px">⏰</div>
+            <h4 style="font-size: 22px; margin: 0 0 12px">No More Hold Times</h4>
+            <p style="color: #475569">Instant AI responses free up staff to focus on food and service.</p>
+          </div>
+          <div class="card">
+            <div style="font-size: 42px; margin-bottom: 20px">💰</div>
+            <h4 style="font-size: 22px; margin: 0 0 12px">Paid in Advance</h4>
+            <p style="color: #475569">Dramatically reduced no-shows. Better cash flow.</p>
+          </div>
+          <div class="card">
+            <div style="font-size: 42px; margin-bottom: 20px">🎯</div>
+            <h4 style="font-size: 22px; margin: 0 0 12px">Higher Accuracy</h4>
+            <p style="color: #475569">Real-time verification means fewer errors and happier customers.</p>
+          </div>
+          <div class="card">
+            <div style="font-size: 42px; margin-bottom: 20px">🔌</div>
+            <h4 style="font-size: 22px; margin: 0 0 12px">POS Integrated</h4>
+            <p style="color: #475569">Works with Toast, Square, Clover, OLO and more.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- PRICING -->
+      <div class="section" style="background: #ffffff; padding-bottom: 60px">
+        <div class="pricing-box" style="max-width: 480px; margin: 0 auto">
+          <h2 style="margin: 0 0 8px; font-size: 28px">Simple Pricing</h2>
+          <div
+            style="display: flex; align-items: baseline; justify-content: center; gap: 12px; margin: 24px 0"
+          >
+            <span style="font-size: 72px; font-weight: 700; color: #10b981; line-height: 1">$1</span>
+            <span style="font-size: 28px; color: #64748b">–</span>
+            <span style="font-size: 72px; font-weight: 700; color: #10b981; line-height: 1">$1.50</span>
+          </div>
+          <p style="font-size: 20px; color: #475569; margin: 0 0 32px">per completed order</p>
+          <p style="color: #64748b; max-width: 340px; margin: 0 auto 32px">
+            Added as line item on receipt. No monthly fees. No setup costs.
+          </p>
+
+          <a
+            href="tel:8477674914"
+            style="
+              background: linear-gradient(to right, #10b981, #34d399);
+              color: #fff;
+              padding: 18px 48px;
+              font-size: 20px;
+              font-weight: 700;
+              text-decoration: none;
+              border-radius: 9999px;
+              display: inline-block;
+            "
+            >Call (847) 767-4914 to Start</a
+          >
+        </div>
+      </div>
+
+      <!-- FINAL CTA -->
+      <div
+        style="
+          background: linear-gradient(135deg, #10b981, #059669);
+          color: #fff;
+          padding: 64px 24px;
+          text-align: center;
+        "
+      >
+        <h2
+          style="font-size: 36px; margin: 0 0 20px; font-family: Georgia, &quot;Playfair Display&quot;, serif"
+        >
+          Ready to transform your pickup orders?
+        </h2>
+        <p style="font-size: 20px; max-width: 460px; margin: 0 auto 32px">
+          Free staff time • Increase order volume • Modern customer experience
+        </p>
+
+        <a
+          href="tel:8477674914"
+          style="
+            background: #fff;
+            color: #10b981;
+            padding: 20px 48px;
+            font-size: 22px;
+            font-weight: 700;
+            text-decoration: none;
+            border-radius: 9999px;
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+          "
+        >
+          <span style="font-size: 28px">📱</span>
+          Call (847) 767-4914
+        </a>
+        <p style="margin-top: 24px; font-size: 15px; opacity: 0.9">First 10 restaurants get priority setup</p>
+      </div>
+
+      <!-- FOOTER -->
+      <div class="footer">
+        <div style="margin-bottom: 24px">
+          <div style="display: inline-flex; align-items: center; gap: 12px; color: #fff">
+            <div
+              style="
+                width: 48px;
+                height: 48px;
+                background: rgba(255, 255, 255, 0.15);
+                border-radius: 9999px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 28px;
+                font-weight: bold;
+              "
+            >
+              mT
+            </div>
+            <div style="font-size: 22px; font-weight: 700">myTech.Today</div>
+          </div>
+        </div>
+        <p style="margin: 0 0 8px">© 2026 myTech.Today • Midwest Technology Solutions</p>
+        <p style="margin: 0; font-size: 13px">
+          Modern solutions for independent restaurants • Real AI that actually works
+        </p>
+      </div>
+    </div>
+  </body>
+</html>

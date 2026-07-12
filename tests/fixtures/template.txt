@@ -1,0 +1,2 @@
+Hello {{company|required}} in {{city|default:"your area"}}.
+Contact: {{contact.name?}}

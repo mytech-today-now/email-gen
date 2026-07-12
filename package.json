@@ -1,0 +1,58 @@
+{
+  "name": "ai-batch-personalizer",
+  "version": "1.0.0",
+  "description": "Local-first AI batch personalization app for prompt-templated prospect emails.",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=22.12.0",
+    "npm": ">=10.0.0"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "cross-env NODE_ENV=development node --watch server.js",
+    "test": "cross-env NODE_ENV=test AI_MOCK=true vitest run",
+    "test:unit": "cross-env NODE_ENV=test AI_MOCK=true vitest run tests/unit",
+    "test:integration": "cross-env NODE_ENV=test AI_MOCK=true vitest run tests/integration",
+    "test:regression": "cross-env NODE_ENV=test AI_MOCK=true vitest run tests/regression",
+    "test:edge": "cross-env NODE_ENV=test AI_MOCK=true vitest run tests/edge",
+    "test:security": "cross-env NODE_ENV=test AI_MOCK=true vitest run tests/security",
+    "test:e2e": "cross-env NODE_ENV=test AI_MOCK=true playwright test",
+    "test:coverage": "cross-env NODE_ENV=test AI_MOCK=true vitest run --coverage",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "dependencies": {
+    "@e965/xlsx": "^0.20.3",
+    "acorn": "^8.15.0",
+    "ai-powered": "0.3.2",
+    "archiver": "^7.0.1",
+    "better-sqlite3": "^12.2.0",
+    "csv-parse": "^6.1.0",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.3.1",
+    "helmet": "^8.1.0",
+    "ipaddr.js": "^2.2.0",
+    "multer": "^2.0.2",
+    "pino": "^10.3.1",
+    "pino-pretty": "^13.1.3",
+    "playwright": "^1.61.1",
+    "rotating-file-stream": "^3.2.7",
+    "sanitize-html": "^2.17.0",
+    "undici": "^7.16.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.57.0",
+    "@vitest/coverage-v8": "^4.1.2",
+    "cross-env": "^10.1.0",
+    "eslint": "^10.1.0",
+    "globals": "^16.5.0",
+    "prettier": "^3.8.1",
+    "supertest": "^7.1.4",
+    "vitest": "^4.1.2"
+  }
+}
