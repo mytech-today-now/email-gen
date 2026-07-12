@@ -6,6 +6,7 @@ import { clampNumber } from "../utils/helpers.js";
 import { validateBody } from "../middleware/validation.js";
 
 const JobRequestSchema = z.object({
+  projectId: z.string().optional(),
   mode: z.enum(["current", "selected", "range", "all"]),
   recordId: z.number().int().positive().optional(),
   recordIds: z.array(z.number().int().positive()).optional(),
@@ -23,10 +24,14 @@ const JobRequestSchema = z.object({
 });
 
 function selectRecords(repositories, body) {
-  const all = repositories.records.list().filter((record) => record.status === "ready");
+  const all = repositories.records
+    .list({ projectId: body.projectId })
+    .filter((record) => record.status === "ready");
   if (body.mode === "all") return all;
-  if (body.mode === "current") return repositories.records.findMany([body.recordId]);
-  if (body.mode === "selected") return repositories.records.findMany(body.recordIds ?? []);
+  if (body.mode === "current")
+    return repositories.records.findMany([body.recordId], { projectId: body.projectId });
+  if (body.mode === "selected")
+    return repositories.records.findMany(body.recordIds ?? [], { projectId: body.projectId });
   if (body.mode === "range") {
     const start = Math.min(body.startId ?? 0, body.endId ?? Number.MAX_SAFE_INTEGER);
     const end = Math.max(body.startId ?? 0, body.endId ?? Number.MAX_SAFE_INTEGER);
@@ -71,14 +76,19 @@ export function processingRoutes(context) {
   router.post("/jobs", validateBody(JobRequestSchema), (req, res, next) => {
     try {
       const body = req.body;
+      const project = context.repositories.projects.resolve(body.projectId);
+      if (!project) throw new AppError("PROJECT_NOT_FOUND", "Project was not found.", 404);
+      body.projectId = project.id;
       const records = selectRecords(context.repositories, body);
       if (!records.length)
         throw new AppError("NO_RECORDS_SELECTED", "No ready records matched the selection.", 400);
       const template = loadTemplate(context.config, body.templateName);
+      context.repositories.projects.updatePrompt(project.id, template.name);
       const job = context.batchManager.createJob({
         records,
         template,
         options: {
+          projectId: project.id,
           templateName: body.templateName,
           addendumName: body.addendumEnabled ? body.addendumName : null,
           provider: body.provider,
@@ -105,8 +115,9 @@ export function processingRoutes(context) {
     }
   });
 
-  router.get("/jobs", (_req, res) => {
-    res.json({ jobs: context.repositories.jobs.list() });
+  router.get("/jobs", (req, res) => {
+    const project = context.repositories.projects.resolve(req.query.projectId);
+    res.json({ project, jobs: context.repositories.jobs.list(50, { projectId: project?.id }) });
   });
 
   router.get("/jobs/:id", (req, res, next) => {

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { loadAppConfig } from "../../config/app.config.js";
+import { collectResearch } from "../../src/research/researchService.js";
 import { fetchWebsite } from "../../src/research/websiteFetcher.js";
 import { createFakeBrowserLauncher, createFakeRoute } from "../helpers/fakeBrowserLauncher.js";
 
@@ -63,5 +64,44 @@ describe("headless browser research edge cases", () => {
         browserLauncher: launcher
       })
     ).rejects.toMatchObject({ code: "RESEARCH_RESPONSE_TOO_LARGE", status: 413 });
+  });
+
+  it("keeps processing usable when a discovered contact page cannot be fetched", async () => {
+    const launcher = {
+      launch: vi
+        .fn()
+        .mockResolvedValueOnce({
+          newContext: vi.fn(async () => ({
+            route: vi.fn(async () => {}),
+            newPage: vi.fn(async () => ({
+              goto: vi.fn(async () => ({
+                status: () => 200,
+                headers: () => ({ "content-type": "text/html" }),
+                request: () => ({ redirectedFrom: () => null })
+              })),
+              url: vi.fn(() => "https://example.com/"),
+              waitForTimeout: vi.fn(async () => {}),
+              content: vi.fn(async () => '<a href="/contact">Contact</a><p>No email here.</p>')
+            })),
+            close: vi.fn(async () => {})
+          })),
+          close: vi.fn(async () => {})
+        })
+        .mockRejectedValueOnce(new Error("contact page unavailable"))
+    };
+    const logger = { info: vi.fn(), warn: vi.fn() };
+
+    const result = await collectResearch(
+      { normalized: { name: "Fallback Cafe", website: "https://example.com/" } },
+      { config: researchConfig({ responseBytes: 12000 }), browserLauncher: launcher, logger, enabled: true }
+    );
+
+    expect(result.status).toBe("ok");
+    expect(result.contact.contactPage).toBe("https://example.com/contact");
+    expect(result.contact.primaryEmail).toBe("");
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({ url: "https://example.com/contact" }),
+      "Contact page research scrape failed"
+    );
   });
 });

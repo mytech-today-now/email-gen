@@ -12,6 +12,7 @@ import { createDatabase } from "./persistence/database.js";
 import { createRecordRepository } from "./persistence/repositories/recordRepository.js";
 import { createJobRepository } from "./persistence/repositories/jobRepository.js";
 import { createResultRepository } from "./persistence/repositories/resultRepository.js";
+import { createProjectRepository } from "./persistence/repositories/projectRepository.js";
 import { createResearchCacheRepository } from "./persistence/repositories/researchCacheRepository.js";
 import { createModelCatalogRepository } from "./persistence/repositories/modelCatalogRepository.js";
 import { createModelSynchronizer } from "./ai/modelCatalog/synchronizer.js";
@@ -24,6 +25,7 @@ import { addendumRoutes } from "./routes/addendumRoutes.js";
 import { processingRoutes } from "./routes/processingRoutes.js";
 import { resultRoutes } from "./routes/resultRoutes.js";
 import { modelCatalogRoutes } from "./routes/modelCatalogRoutes.js";
+import { projectRoutes } from "./routes/projectRoutes.js";
 
 export function createApp(options = {}) {
   const config = options.config ?? loadAppConfig();
@@ -41,6 +43,7 @@ export function createApp(options = {}) {
     providerPreference: config.modelSync.providerPreference
   });
   const repositories = {
+    projects: createProjectRepository(db),
     records: createRecordRepository(db),
     jobs: createJobRepository(db),
     results: createResultRepository(db)
@@ -91,7 +94,20 @@ export function createApp(options = {}) {
   app.locals.context = context;
   app.use(requestId());
   app.use((req, _res, next) => {
-    logger.info({ requestId: req.id, method: req.method, url: req.originalUrl }, "request");
+    const startedAt = Date.now();
+    logger.info({ requestId: req.id, method: req.method, url: req.originalUrl }, "Request started");
+    _res.on("finish", () => {
+      logger.info(
+        {
+          requestId: req.id,
+          method: req.method,
+          url: req.originalUrl,
+          statusCode: _res.statusCode,
+          durationMs: Date.now() - startedAt
+        },
+        "Request completed"
+      );
+    });
     next();
   });
   applySecurity(app, config);
@@ -103,6 +119,7 @@ export function createApp(options = {}) {
   });
   app.use(express.static(path.join(config.rootDir, "public"), { extensions: ["html"] }));
   app.use("/api", healthRoutes(context));
+  app.use("/api", projectRoutes(context));
   app.use("/api", dataRoutes(context));
   app.use("/api", templateRoutes(context));
   app.use("/api", addendumRoutes(context));

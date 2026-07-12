@@ -1,0 +1,22 @@
+export const responsiveViewportCases = [
+  { name: "8K landscape", width: 7680, height: 4320, family: "8K" },
+  { name: "4K landscape", width: 3840, height: 2160, family: "4K" },
+  { name: "2K landscape", width: 2560, height: 1440, family: "2K" },
+  { name: "1028 landscape", width: 1028, height: 768, family: "1028" },
+  { name: "1028 portrait", width: 768, height: 1028, family: "1028" },
+  { name: "720 landscape", width: 1280, height: 720, family: "720" },
+  { name: "720 portrait", width: 720, height: 1280, family: "720" },
+  { name: "640 landscape", width: 640, height: 480, family: "640" },
+  { name: "640 portrait", width: 480, height: 640, family: "640" },
+  { name: "512 square", width: 512, height: 512, family: "512" },
+  { name: "480 phone", width: 480, height: 854, family: "480" },
+  { name: "480 landscape", width: 854, height: 480, family: "480" },
+  { name: "NTSC", width: 720, height: 486, family: "NTSC" },
+  { name: "PAL", width: 720, height: 576, family: "PAL" },
+  { name: "tablet portrait", width: 768, height: 1024, family: "Tablet" },
+  { name: "tablet landscape", width: 1024, height: 768, family: "Tablet" },
+  { name: "cell phone portrait", width: 360, height: 800, family: "Cell phone" },
+  { name: "cell phone landscape", width: 800, height: 360, family: "Cell phone" },
+  { name: "iPhone portrait", width: 393, height: 852, family: "iPhone" },
+  { name: "iPhone landscape", width: 852, height: 393, family: "iPhone" }
+];

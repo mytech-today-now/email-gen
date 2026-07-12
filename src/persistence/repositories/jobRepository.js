@@ -3,6 +3,7 @@ import { makeId, nowIso, parseJson } from "../../utils/helpers.js";
 function rowToJob(row) {
   return {
     id: row.id,
+    projectId: row.project_id,
     status: row.status,
     options: parseJson(row.options_json, {}),
     counts: parseJson(row.counts_json, {}),
@@ -15,12 +16,13 @@ function rowToJob(row) {
 
 export function createJobRepository(db) {
   return {
-    create({ options, counts }) {
+    create({ options, counts, projectId }) {
       const now = nowIso();
       const id = makeId("job");
+      const resolvedProjectId = projectId ?? options?.projectId ?? "project_default";
       db.prepare(
-        "INSERT INTO jobs (id, status, options_json, counts_json, cancel_requested, created_at, updated_at) VALUES (?, 'queued', ?, ?, 0, ?, ?)"
-      ).run(id, JSON.stringify(options), JSON.stringify(counts), now, now);
+        "INSERT INTO jobs (id, project_id, status, options_json, counts_json, cancel_requested, created_at, updated_at) VALUES (?, ?, 'queued', ?, ?, 0, ?, ?)"
+      ).run(id, resolvedProjectId, JSON.stringify(options), JSON.stringify(counts), now, now);
       return this.get(id);
     },
 
@@ -29,8 +31,13 @@ export function createJobRepository(db) {
       return row ? rowToJob(row) : null;
     },
 
-    list(limit = 50) {
-      return db.prepare("SELECT * FROM jobs ORDER BY created_at DESC LIMIT ?").all(limit).map(rowToJob);
+    list(limit = 50, { projectId } = {}) {
+      const rows = projectId
+        ? db
+            .prepare("SELECT * FROM jobs WHERE project_id = ? ORDER BY created_at DESC LIMIT ?")
+            .all(projectId, limit)
+        : db.prepare("SELECT * FROM jobs ORDER BY created_at DESC LIMIT ?").all(limit);
+      return rows.map(rowToJob);
     },
 
     update(id, patch) {

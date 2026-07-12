@@ -2,14 +2,17 @@ import { vi } from "vitest";
 
 export function createFakeBrowserLauncher({
   html = "<html><head><title>Example</title></head><body>Example</body></html>",
+  htmlByUrl = {},
   finalUrl = "https://example.com/",
   status = 200,
   contentType = "text/html; charset=utf-8",
   onGoto
 } = {}) {
   let routeHandler;
+  let currentUrl = finalUrl;
   const page = {
     goto: vi.fn(async (url) => {
+      currentUrl = finalUrl === "https://example.com/" ? url : finalUrl;
       await onGoto?.({ url, routeHandler });
       return {
         status: () => status,
@@ -17,9 +20,9 @@ export function createFakeBrowserLauncher({
         request: () => ({ redirectedFrom: () => null })
       };
     }),
-    url: vi.fn(() => finalUrl),
+    url: vi.fn(() => currentUrl),
     waitForTimeout: vi.fn(async () => {}),
-    content: vi.fn(async () => html)
+    content: vi.fn(async () => htmlByUrl[currentUrl] ?? htmlByUrl[finalUrl] ?? html)
   };
   const context = {
     route: vi.fn(async (_pattern, handler) => {

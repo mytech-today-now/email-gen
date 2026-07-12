@@ -1,25 +1,46 @@
 import express from "express";
+import fs from "node:fs";
+import path from "node:path";
 import { z } from "zod";
 import { AppError } from "../utils/errors.js";
 import { validateBody } from "../middleware/validation.js";
 import { renderEmailFragment, renderPlainText } from "../output/emailRenderer.js";
 import { writeResultHtml, writeResultsZip } from "../output/exporter.js";
+import { deliveryExportProfiles, writeDeliveryExport } from "../output/deliveryExporter.js";
 import { renderHtmlDocument } from "../output/documentRenderer.js";
 import { processRecord } from "../ai/processor.js";
 import { loadTemplate } from "../templates/loader.js";
+import { resolveInside } from "../utils/files.js";
 
 const EditSchema = z.object({
   subject: z.string().trim().min(1).max(160),
   bodyHtml: z.string().trim().min(1)
 });
 
+const DeliveryExportSchema = z.object({
+  profile: z.string().trim().default("all"),
+  projectId: z.string().optional(),
+  resultIds: z.array(z.string().trim().min(1)).default([])
+});
+const deliveryProfileIds = new Set(deliveryExportProfiles.map((profile) => profile.id));
+
 export function resultRoutes(context) {
   const router = express.Router();
 
   router.get("/results", (req, res) => {
+    const project = context.repositories.projects.resolve(req.query.projectId);
     res.json({
-      results: context.repositories.results.list({ status: req.query.status, recordId: req.query.recordId })
+      project,
+      results: context.repositories.results.list({
+        status: req.query.status,
+        recordId: req.query.recordId,
+        projectId: project?.id
+      })
     });
+  });
+
+  router.get("/results/delivery-profiles", (_req, res) => {
+    res.json({ profiles: deliveryExportProfiles });
   });
 
   router.get("/results/:id", (req, res, next) => {
@@ -36,7 +57,7 @@ export function resultRoutes(context) {
     try {
       const result = context.repositories.results.get(req.params.id);
       if (!result) throw new AppError("RESULT_NOT_FOUND", "Result was not found.", 404);
-      const record = context.repositories.records.get(result.recordId);
+      const record = context.repositories.records.get(result.recordId, { projectId: result.projectId });
       const emailHtml = renderEmailFragment({
         subject: req.body.subject,
         bodyHtml: req.body.bodyHtml,
@@ -51,6 +72,7 @@ export function resultRoutes(context) {
       res.json({
         result: context.repositories.results.updateManual(result.id, { ...req.body, bodyText, emailHtml })
       });
+      context.logger.info({ resultId: result.id, projectId: result.projectId }, "Result manually edited");
     } catch (error) {
       next(error);
     }
@@ -60,7 +82,7 @@ export function resultRoutes(context) {
     try {
       const existing = context.repositories.results.get(req.params.id);
       if (!existing) throw new AppError("RESULT_NOT_FOUND", "Result was not found.", 404);
-      const record = context.repositories.records.get(existing.recordId);
+      const record = context.repositories.records.get(existing.recordId, { projectId: existing.projectId });
       const template = loadTemplate(context.config, existing.templateName);
       const payload = await processRecord({
         record,
@@ -76,6 +98,7 @@ export function resultRoutes(context) {
         logger: context.logger
       });
       const processing = context.repositories.results.createProcessing({
+        projectId: existing.projectId,
         jobId: existing.jobId,
         recordId: record.id,
         templateName: template.name,
@@ -92,7 +115,7 @@ export function resultRoutes(context) {
     try {
       const result = context.repositories.results.get(req.params.id);
       if (!result) throw new AppError("RESULT_NOT_FOUND", "Result was not found.", 404);
-      const record = context.repositories.records.get(result.recordId);
+      const record = context.repositories.records.get(result.recordId, { projectId: result.projectId });
       const written = writeResultHtml(result, record, context.config);
       res.download(written.filePath, written.filename);
     } catch (error) {
@@ -117,13 +140,19 @@ export function resultRoutes(context) {
   router.post("/results/export", async (req, res, next) => {
     try {
       const ids = Array.isArray(req.body.resultIds) ? req.body.resultIds : [];
+      const project = context.repositories.projects.resolve(req.body.projectId);
       const results = ids.length
-        ? context.repositories.results.listByIds(ids)
-        : context.repositories.results.list({ status: "completed" });
-      const items = results.map((result) => ({
-        result,
-        record: context.repositories.records.get(result.recordId)
-      }));
+        ? context.repositories.results.listByIds(ids, { projectId: project?.id })
+        : context.repositories.results.list({ status: "completed", projectId: project?.id });
+      const items = results
+        .map((result) => ({
+          result,
+          record: context.repositories.records.get(result.recordId, { projectId: result.projectId })
+        }))
+        .filter((item) => item.record);
+      if (!items.length) {
+        throw new AppError("NO_COMPLETED_RESULTS", "No completed email results are ready to export.", 400);
+      }
       if (items.length === 1) {
         const written = writeResultHtml(items[0].result, items[0].record, context.config);
         res.json({ export: written });
@@ -131,6 +160,59 @@ export function resultRoutes(context) {
         const written = await writeResultsZip(items, context.config);
         res.json({ export: written });
       }
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post("/results/delivery-export", validateBody(DeliveryExportSchema), async (req, res, next) => {
+    try {
+      if (!deliveryProfileIds.has(req.body.profile)) {
+        throw new AppError("UNSUPPORTED_DELIVERY_PROFILE", "Delivery export profile is not supported.", 400);
+      }
+      const project = context.repositories.projects.resolve(req.body.projectId);
+      const results = req.body.resultIds.length
+        ? context.repositories.results.listByIds(req.body.resultIds, { projectId: project?.id })
+        : context.repositories.results.list({ status: "completed", projectId: project?.id });
+      const items = results
+        .filter((result) => result.status === "completed")
+        .map((result) => ({
+          result,
+          record: context.repositories.records.get(result.recordId, { projectId: result.projectId })
+        }))
+        .filter((item) => item.record);
+      if (!items.length) {
+        context.logger.warn(
+          { profile: req.body.profile, projectId: project?.id, requestedCount: req.body.resultIds.length },
+          "Delivery export requested without completed results"
+        );
+        throw new AppError("NO_COMPLETED_RESULTS", "No completed email results are ready to export.", 400);
+      }
+      const written = await writeDeliveryExport(items, context.config, { profile: req.body.profile });
+      context.logger.info(
+        {
+          profile: req.body.profile,
+          projectId: project?.id,
+          itemCount: items.length,
+          filename: written.filename,
+          fileCount: written.files.length
+        },
+        "Delivery export created"
+      );
+      res.json({ export: written });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.get("/results/export-file/:filename", (req, res, next) => {
+    try {
+      const requested = path.basename(req.params.filename);
+      const filePath = resolveInside(context.config.outputDir, requested);
+      if (!fs.existsSync(filePath)) {
+        throw new AppError("EXPORT_NOT_FOUND", "Export file was not found.", 404);
+      }
+      res.download(filePath, requested);
     } catch (error) {
       next(error);
     }

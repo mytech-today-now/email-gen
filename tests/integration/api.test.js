@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createTestHarness, waitForJob } from "../helpers/appTestHarness.js";
 
@@ -74,7 +76,7 @@ describe("API integration", () => {
       .post("/api/templates/preview")
       .send({ templateName: "restaurant-ai-sms.txt", recordId })
       .expect(200);
-    expect(preview.body.rendered).toContain("Acadian Grille & Bar");
+    expect(preview.body.rendered).toContain("https://acadiangrille.com/");
 
     const jobResponse = await harness.request
       .post("/api/jobs")
@@ -95,6 +97,56 @@ describe("API integration", () => {
     expect(job.counts.completed).toBe(1);
     const results = await harness.request.get("/api/results").expect(200);
     expect(results.body.results[0].subject).toContain("Acadian");
+  });
+
+  it("keeps imported datasets, prompts, and results siloed by project", async () => {
+    const firstImport = await harness.request.post("/api/records/load-sample").send({}).expect(200);
+    const firstProjectId = firstImport.body.project.id;
+    const firstRecordId = firstImport.body.records[0].id;
+
+    const firstJob = await harness.request
+      .post("/api/jobs")
+      .send({
+        projectId: firstProjectId,
+        mode: "current",
+        recordId: firstRecordId,
+        templateName: "restaurant-ai-sms.txt",
+        provider: "mock",
+        model: "mock-structured-v1",
+        researchEnabled: false,
+        concurrency: 1,
+        delayMs: 0
+      })
+      .expect(202);
+    await waitForJob(harness.request, firstJob.body.job.id);
+
+    const secondImport = await harness.request
+      .post("/api/records/import")
+      .attach(
+        "file",
+        Buffer.from("id,name,city,website\n99,New Cafe,Lincoln,https://example.com/\n"),
+        "new.csv"
+      )
+      .expect(200);
+    const secondProjectId = secondImport.body.project.id;
+
+    expect(secondProjectId).not.toBe(firstProjectId);
+    expect(secondImport.body.project.name).toContain("New Cafe");
+
+    const projects = await harness.request.get("/api/projects").expect(200);
+    expect(projects.body.projects.map((project) => project.id)).toEqual(
+      expect.arrayContaining([firstProjectId, secondProjectId])
+    );
+
+    const firstRecords = await harness.request.get(`/api/records?projectId=${firstProjectId}`).expect(200);
+    const secondRecords = await harness.request.get(`/api/records?projectId=${secondProjectId}`).expect(200);
+    expect(firstRecords.body.records).toHaveLength(4);
+    expect(secondRecords.body.records).toHaveLength(1);
+
+    const firstResults = await harness.request.get(`/api/results?projectId=${firstProjectId}`).expect(200);
+    const secondResults = await harness.request.get(`/api/results?projectId=${secondProjectId}`).expect(200);
+    expect(firstResults.body.results).toHaveLength(1);
+    expect(secondResults.body.results).toHaveLength(0);
   });
 
   it("persists manual edits", async () => {
@@ -122,5 +174,35 @@ describe("API integration", () => {
     const fetched = await harness.request.get(`/api/results/${result.id}`).expect(200);
     expect(fetched.body.result.bodyHtml).toContain("Saved");
     expect(fetched.body.versions).toHaveLength(1);
+  });
+
+  it("exports completed emails as a delivery kit for sending systems", async () => {
+    const sample = await harness.request.post("/api/records/load-sample").send({}).expect(200);
+    const jobResponse = await harness.request
+      .post("/api/jobs")
+      .send({
+        mode: "current",
+        recordId: sample.body.records[0].id,
+        templateName: "restaurant-ai-sms.txt",
+        provider: "mock",
+        model: "mock-structured-v1",
+        researchEnabled: false,
+        concurrency: 1,
+        delayMs: 0
+      })
+      .expect(202);
+    await waitForJob(harness.request, jobResponse.body.job.id);
+    const result = (await harness.request.get("/api/results").expect(200)).body.results[0];
+    const response = await harness.request
+      .post("/api/results/delivery-export")
+      .send({ profile: "mailchimp", resultIds: [result.id] })
+      .expect(200);
+    expect(response.body.export.filename).toMatch(/^delivery-mailchimp.*\.zip$/);
+    expect(response.body.export.files).toContain("mailchimp/contacts.csv");
+    expect(fs.existsSync(path.join(harness.context.config.outputDir, response.body.export.filename))).toBe(
+      true
+    );
+
+    await harness.request.get(`/api/results/export-file/${response.body.export.filename}`).expect(200);
   });
 });

@@ -113,4 +113,44 @@ describe("browser-backed restaurant research regressions", () => {
       "Website research scrape failed"
     );
   });
+
+  it("discovers a business email from a linked contact page and caches contact metadata", async () => {
+    const { launcher } = createFakeBrowserLauncher({
+      htmlByUrl: {
+        "https://example.com/": `
+          <html><head><title>Rendered Bistro</title></head>
+          <body><a href="/contact-us">Contact us</a></body></html>`,
+        "https://example.com/contact-us": `
+          <html><head><title>Contact Rendered Bistro</title></head>
+          <body><a href="mailto:hello@rendered.example">hello@rendered.example</a></body></html>`
+      }
+    });
+    const logger = { info: vi.fn(), warn: vi.fn() };
+    const repository = cacheRepository();
+
+    const result = await collectResearch(
+      { normalized: { name: "Rendered Bistro", website: "https://example.com/" } },
+      {
+        config: config(),
+        cacheRepository: repository,
+        browserLauncher: launcher,
+        logger,
+        enabled: true
+      }
+    );
+
+    expect(result.contact).toMatchObject({
+      primaryEmail: "hello@rendered.example",
+      contactPage: "https://example.com/contact-us"
+    });
+    expect(repository.save).toHaveBeenCalledWith(
+      "https://example.com/",
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          contact: expect.objectContaining({ primaryEmail: "hello@rendered.example" })
+        })
+      }),
+      60
+    );
+  });
 });

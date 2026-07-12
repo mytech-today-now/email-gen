@@ -29,8 +29,9 @@ export function createBatchManager({
     const job = repositories.jobs.get(jobId);
     if (!job) return;
     const options = job.options;
+    const projectId = job.projectId || options.projectId || "project_default";
     repositories.jobs.update(jobId, { status: JOB_STATUS.RUNNING });
-    const records = repositories.records.findMany(options.recordIds);
+    const records = repositories.records.findMany(options.recordIds, { projectId });
     const queue = [...records];
     const concurrency = clampNumber(
       options.concurrency,
@@ -49,6 +50,7 @@ export function createBatchManager({
         const record = queue.shift();
         repositories.jobs.increment(jobId, { queued: -1, processing: 1 });
         const result = repositories.results.createProcessing({
+          projectId,
           jobId,
           recordId: record.id,
           templateName: options.templateName,
@@ -132,6 +134,7 @@ export function createBatchManager({
         (record) => analysis.rows.find((row) => row.recordId === record.id)?.canProcess
       );
       const job = repositories.jobs.create({
+        projectId: options.projectId,
         options: {
           ...options,
           templateName: template.name,
@@ -158,7 +161,12 @@ export function createBatchManager({
       const failed = repositories.results.failedForJob(jobId);
       if (!failed.length)
         throw new AppError("NO_FAILED_RESULTS", "This job has no failed results to retry.", 400);
-      const records = repositories.records.findMany(failed.map((result) => result.recordId));
+      const records = repositories.records.findMany(
+        failed.map((result) => result.recordId),
+        {
+          projectId: job.projectId
+        }
+      );
       return this.createJob({
         records,
         template: job.options.template,

@@ -25,7 +25,7 @@ export function applySecurity(app, config) {
   app.use(
     rateLimit({
       windowMs: 60_000,
-      limit: 240,
+      limit: config.nodeEnv === "test" ? 5000 : 240,
       standardHeaders: true,
       legacyHeaders: false
     })

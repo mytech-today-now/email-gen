@@ -13,7 +13,8 @@ export function templateRoutes(context) {
   router.get("/templates/:name", (req, res, next) => {
     try {
       const template = loadTemplate(context.config, req.params.name);
-      const records = context.repositories.records.list();
+      const project = context.repositories.projects.resolve(req.query.projectId);
+      const records = context.repositories.records.list({ projectId: project?.id });
       res.json({ template, analysis: analyzeRecords(template.content, records) });
     } catch (error) {
       next(error);
@@ -25,7 +26,7 @@ export function templateRoutes(context) {
       const template = req.body.templateContent
         ? { name: "inline", content: req.body.templateContent }
         : loadTemplate(context.config, req.body.templateName);
-      const record = context.repositories.records.get(req.body.recordId);
+      const record = context.repositories.records.get(req.body.recordId, { projectId: req.body.projectId });
       if (!record) throw new AppError("RECORD_NOT_FOUND", "Record was not found.", 404);
       const preview = renderTemplate(template.content, record.normalized, { blockOnMissing: false });
       res.json({

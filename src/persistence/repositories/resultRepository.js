@@ -3,6 +3,7 @@ import { makeId, nowIso, parseJson } from "../../utils/helpers.js";
 function rowToResult(row) {
   return {
     id: row.id,
+    projectId: row.project_id,
     jobId: row.job_id,
     recordId: row.record_id,
     templateName: row.template_name,
@@ -27,22 +28,31 @@ function rowToResult(row) {
 export function createResultRepository(db) {
   const insert = db.prepare(`
     INSERT INTO results (
-      id, job_id, record_id, template_name, provider, model, status, subject, body_html,
+      id, project_id, job_id, record_id, template_name, provider, model, status, subject, body_html,
       body_text, email_html, prompt, research_json, error_json, raw_ai, version, edited_at,
       created_at, updated_at
     ) VALUES (
-      @id, @jobId, @recordId, @templateName, @provider, @model, @status, @subject, @bodyHtml,
+      @id, @projectId, @jobId, @recordId, @templateName, @provider, @model, @status, @subject, @bodyHtml,
       @bodyText, @emailHtml, @prompt, @researchJson, @errorJson, @rawAi, @version, @editedAt,
       @createdAt, @updatedAt
     )
   `);
 
   return {
-    createProcessing({ jobId, recordId, templateName, provider, model, prompt = "" }) {
+    createProcessing({
+      projectId = "project_default",
+      jobId,
+      recordId,
+      templateName,
+      provider,
+      model,
+      prompt = ""
+    }) {
       const now = nowIso();
       const id = makeId("res");
       insert.run({
         id,
+        projectId,
         jobId,
         recordId,
         templateName,
@@ -109,9 +119,13 @@ export function createResultRepository(db) {
       return row ? rowToResult(row) : null;
     },
 
-    list({ status, recordId } = {}) {
+    list({ status, recordId, projectId } = {}) {
       const clauses = [];
       const params = [];
+      if (projectId) {
+        clauses.push("project_id = ?");
+        params.push(projectId);
+      }
       if (status) {
         clauses.push("status = ?");
         params.push(status);
@@ -127,12 +141,16 @@ export function createResultRepository(db) {
         .map(rowToResult);
     },
 
-    listByIds(ids) {
+    listByIds(ids, { projectId } = {}) {
       if (!ids.length) return [];
       const placeholders = ids.map(() => "?").join(",");
+      const projectClause = projectId ? " AND project_id = ?" : "";
+      const params = projectId ? [...ids, projectId] : ids;
       return db
-        .prepare(`SELECT * FROM results WHERE id IN (${placeholders}) ORDER BY updated_at DESC`)
-        .all(...ids)
+        .prepare(
+          `SELECT * FROM results WHERE id IN (${placeholders})${projectClause} ORDER BY updated_at DESC`
+        )
+        .all(...params)
         .map(rowToResult);
     },
 

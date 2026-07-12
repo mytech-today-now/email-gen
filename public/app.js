@@ -2,12 +2,15 @@ const state = {
   config: null,
   modelCatalog: [],
   modelSyncStatus: null,
+  projects: [],
+  activeProjectId: null,
   records: [],
   templates: [],
   addenda: [],
   results: [],
   activeRecordId: null,
   activeResultId: null,
+  selectedResultIds: new Set(),
   activeJobId: null,
   unsaved: false,
   pollTimer: null
@@ -18,6 +21,8 @@ const $ = (id) => document.getElementById(id);
 function setStatus(message, isError = false) {
   $("statusLine").textContent = message;
   $("statusLine").style.color = isError ? "#a73535" : "";
+  if (isError) console.error(message);
+  else console.info(message);
 }
 
 async function api(path, options = {}) {
@@ -36,8 +41,22 @@ async function api(path, options = {}) {
   return type.includes("application/json") ? response.json() : response;
 }
 
+function projectQuery() {
+  return state.activeProjectId ? `projectId=${encodeURIComponent(state.activeProjectId)}` : "";
+}
+
+function withProject(path) {
+  const query = projectQuery();
+  if (!query) return path;
+  return `${path}${path.includes("?") ? "&" : "?"}${query}`;
+}
+
 function selectedRecordIds() {
   return [...document.querySelectorAll(".record-check:checked")].map((input) => Number(input.value));
+}
+
+function selectedResultIds() {
+  return [...state.selectedResultIds];
 }
 
 function activeRecord() {
@@ -64,6 +83,67 @@ function appendCell(row, value) {
   cell.textContent = value ?? "";
   row.append(cell);
   return cell;
+}
+
+function cleanContact(value) {
+  return String(value ?? "")
+    .replace(/[\r\n]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function validEmail(value) {
+  const candidate = cleanContact(value);
+  return /^[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]+$/.test(candidate) ? candidate : "";
+}
+
+function contactForResult(result) {
+  const record = state.records.find((item) => item.id === result?.recordId);
+  const normalized = record?.normalized ?? {};
+  const emailFields = [
+    "email",
+    "emailAddress",
+    "recipientEmail",
+    "contactEmail",
+    "workEmail",
+    "businessEmail",
+    "ownerEmail"
+  ];
+  for (const field of emailFields) {
+    const email = validEmail(normalized[field]);
+    if (email) return { label: email, href: `mailto:${email}` };
+  }
+  for (const [key, value] of Object.entries(normalized)) {
+    if (/email/i.test(key)) {
+      const email = validEmail(value);
+      if (email) return { label: email, href: `mailto:${email}` };
+    }
+  }
+  const contact = result?.research?.contact ?? result?.research?.metadata?.contact ?? {};
+  const researchEmail = validEmail(contact.primaryEmail) || validEmail(contact.emails?.[0]);
+  if (researchEmail) return { label: researchEmail, href: `mailto:${researchEmail}` };
+  const contactPage = cleanContact(contact.contactPage || contact.contactPages?.[0]);
+  if (contactPage) return { label: contactPage, href: contactPage };
+  return { label: "No email or contact page found", href: "" };
+}
+
+function renderSelectedContact(result) {
+  const target = $("selectedContactValue");
+  target.innerHTML = "";
+  if (!result) {
+    target.textContent = "No result selected";
+    return;
+  }
+  const contact = contactForResult(result);
+  if (!contact.href) {
+    target.textContent = contact.label;
+    return;
+  }
+  const link = document.createElement("a");
+  link.href = contact.href;
+  link.textContent = contact.label;
+  link.rel = "noreferrer";
+  target.append(link);
 }
 
 function renderRecords() {
@@ -95,6 +175,16 @@ function renderRecords() {
   syncRecordSelect();
 }
 
+function renderProjects() {
+  populateSelect(
+    $("projectSelect"),
+    state.projects,
+    (project) => project.id,
+    (project) => `${project.name} (${project.recordCount})`
+  );
+  if (state.activeProjectId) $("projectSelect").value = state.activeProjectId;
+}
+
 function syncRecordSelect() {
   const record = activeRecord();
   if (record) {
@@ -106,11 +196,26 @@ function syncRecordSelect() {
 function renderResults() {
   const rows = $("resultRows");
   rows.innerHTML = "";
+  const currentIds = new Set(state.results.map((result) => result.id));
+  state.selectedResultIds = new Set([...state.selectedResultIds].filter((id) => currentIds.has(id)));
+  if (!currentIds.has(state.activeResultId)) state.activeResultId = state.results[0]?.id || null;
   for (const result of state.results) {
     const record = state.records.find((item) => item.id === result.recordId);
     const tr = document.createElement("tr");
     if (result.id === state.activeResultId) tr.classList.add("is-active");
+    if (state.selectedResultIds.has(result.id)) tr.classList.add("is-selected");
+    tr.dataset.resultRowId = result.id;
 
+    const selectCell = document.createElement("td");
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.className = "result-check";
+    checkbox.value = result.id;
+    checkbox.checked = state.selectedResultIds.has(result.id);
+    checkbox.disabled = result.status !== "completed";
+    checkbox.ariaLabel = `Select ${record?.displayName || result.recordId}`;
+    selectCell.append(checkbox);
+    tr.append(selectCell);
     const recordCell = document.createElement("td");
     const button = document.createElement("button");
     button.type = "button";
@@ -126,13 +231,42 @@ function renderResults() {
     );
     rows.append(tr);
   }
+  syncResultSelectAll();
+  rows.querySelectorAll("[data-result-row-id]").forEach((row) => {
+    row.addEventListener("click", () => {
+      activateResultRow(row.dataset.resultRowId);
+    });
+  });
+  rows.querySelectorAll(".result-check").forEach((checkbox) => {
+    checkbox.addEventListener("click", (event) => {
+      event.stopPropagation();
+      toggleResultSelection(checkbox.value);
+    });
+  });
   rows.querySelectorAll("[data-result-id]").forEach((button) => {
-    button.addEventListener("click", () => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
       selectResult(button.dataset.resultId);
     });
   });
-  if (!state.activeResultId && state.results.length) state.activeResultId = state.results[0].id;
   renderActiveResult();
+}
+
+function syncResultSelectAll() {
+  const selectAll = $("selectAllResults");
+  const completed = state.results.filter((result) => result.status === "completed");
+  const selectedCompleted = completed.filter((result) => state.selectedResultIds.has(result.id));
+  selectAll.checked = completed.length > 0 && selectedCompleted.length === completed.length;
+  selectAll.indeterminate = selectedCompleted.length > 0 && selectedCompleted.length < completed.length;
+}
+
+function toggleResultSelection(resultId, force) {
+  const result = state.results.find((item) => item.id === resultId);
+  if (!result || result.status !== "completed") return;
+  const shouldSelect = force ?? !state.selectedResultIds.has(resultId);
+  if (shouldSelect) state.selectedResultIds.add(resultId);
+  else state.selectedResultIds.delete(resultId);
+  renderResults();
 }
 
 function renderActiveResult() {
@@ -158,6 +292,7 @@ function renderActiveResult() {
     $("bodyInput").value = "";
     $("emailPreview").srcdoc = "";
     $("resultPrompt").textContent = "";
+    renderSelectedContact(null);
     $("resultError").hidden = true;
     $("resultError").textContent = "";
     return;
@@ -165,6 +300,7 @@ function renderActiveResult() {
   const errorText = result.status === "failed" ? result.error?.message || "Processing failed." : "";
   $("resultError").hidden = !errorText;
   $("resultError").textContent = errorText;
+  renderSelectedContact(result);
   $("subjectInput").value = result.subject;
   $("bodyInput").value = result.bodyHtml;
   $("emailPreview").srcdoc = result.emailHtml || "";
@@ -181,6 +317,17 @@ function formatJobSummary(job) {
 async function selectResult(id) {
   if (state.unsaved && !confirm("Discard unsaved changes?")) return;
   state.activeResultId = id;
+  renderResults();
+}
+
+function activateResultRow(id) {
+  if (state.unsaved && !confirm("Discard unsaved changes?")) return;
+  state.activeResultId = id;
+  const result = state.results.find((item) => item.id === id);
+  if (result?.status === "completed") {
+    if (state.selectedResultIds.has(id)) state.selectedResultIds.delete(id);
+    else state.selectedResultIds.add(id);
+  }
   renderResults();
 }
 
@@ -260,12 +407,16 @@ function renderModelCatalog() {
 }
 
 async function refreshAll() {
+  const projects = await api("/api/projects");
+  state.projects = projects.projects;
+  state.activeProjectId =
+    state.activeProjectId || projects.activeProject?.id || state.projects[0]?.id || null;
   const [config, records, templates, addenda, results, modelCatalog] = await Promise.all([
     api("/api/config"),
-    api("/api/records"),
+    api(withProject("/api/records")),
     api("/api/templates"),
     api("/api/addenda"),
-    api("/api/results"),
+    api(withProject("/api/results")),
     api("/api/models/catalog")
   ]);
   state.config = config;
@@ -275,7 +426,12 @@ async function refreshAll() {
   state.results = results.results;
   state.modelCatalog = modelCatalog.models;
   state.modelSyncStatus = modelCatalog.status;
+  if (records.project?.id) state.activeProjectId = records.project.id;
   if (!state.activeRecordId && state.records[0]) state.activeRecordId = state.records[0].id;
+  if (!state.results.some((result) => result.id === state.activeResultId)) {
+    state.activeResultId = state.results[0]?.id || null;
+  }
+  renderProjects();
   renderConfigControls();
   populateSelect(
     $("templateSelect"),
@@ -313,21 +469,42 @@ async function refreshModels() {
 }
 
 async function loadSample() {
-  const payload = await api("/api/records/load-sample", { method: "POST", body: "{}" });
+  const payload = await api("/api/records/load-sample", {
+    method: "POST",
+    body: JSON.stringify({ templateName: $("templateSelect").value || "restaurant-ai-sms.txt" })
+  });
+  await refreshProjects(payload.project?.id);
   state.records = payload.records;
+  state.results = [];
   state.activeRecordId = state.records[0]?.id || null;
+  state.activeResultId = null;
+  state.selectedResultIds.clear();
   renderRecords();
+  renderResults();
   setStatus(`Loaded ${payload.count} sample records`);
 }
 
 async function importFile(file) {
   const form = new FormData();
   form.append("file", file);
+  form.append("templateName", $("templateSelect").value || "restaurant-ai-sms.txt");
   const payload = await api("/api/records/import", { method: "POST", body: form });
+  await refreshProjects(payload.project?.id);
   state.records = payload.records;
+  state.results = [];
   state.activeRecordId = state.records[0]?.id || null;
+  state.activeResultId = null;
+  state.selectedResultIds.clear();
   renderRecords();
+  renderResults();
   setStatus(`Imported ${payload.count} records`);
+}
+
+async function refreshProjects(activeProjectId = state.activeProjectId) {
+  const payload = await api("/api/projects");
+  state.projects = payload.projects;
+  state.activeProjectId = activeProjectId || payload.activeProject?.id || state.projects[0]?.id || null;
+  renderProjects();
 }
 
 async function previewPrompt() {
@@ -335,7 +512,11 @@ async function previewPrompt() {
   if (!record) throw new Error("Load records first.");
   const payload = await api("/api/templates/preview", {
     method: "POST",
-    body: JSON.stringify({ templateName: $("templateSelect").value, recordId: record.id })
+    body: JSON.stringify({
+      projectId: state.activeProjectId,
+      templateName: $("templateSelect").value,
+      recordId: record.id
+    })
   });
   $("promptPreview").textContent = payload.rendered;
   const messages = [];
@@ -350,6 +531,7 @@ async function createJob(mode) {
   const record = activeRecord();
   const body = {
     mode,
+    projectId: state.activeProjectId,
     recordId: record?.id,
     recordIds: selectedRecordIds(),
     startId: Number($("rangeStart").value || 0) || undefined,
@@ -375,7 +557,10 @@ function startPolling() {
   clearInterval(state.pollTimer);
   state.pollTimer = setInterval(async () => {
     if (!state.activeJobId) return;
-    const [job, results] = await Promise.all([api(`/api/jobs/${state.activeJobId}`), api("/api/results")]);
+    const [job, results] = await Promise.all([
+      api(`/api/jobs/${state.activeJobId}`),
+      api(withProject("/api/results"))
+    ]);
     state.results = results.results;
     $("jobSummary").textContent = formatJobSummary(job.job);
     renderResults();
@@ -436,10 +621,49 @@ async function copyRendered() {
   setStatus("Rendered email copied");
 }
 
+function downloadExport(filename) {
+  const link = document.createElement("a");
+  link.href = `/api/results/export-file/${encodeURIComponent(filename)}`;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+}
+
+async function exportDeliverySelected() {
+  const ids = selectedResultIds();
+  if (!ids.length) {
+    setStatus("Select one or more completed results first.", true);
+    return;
+  }
+  await exportDelivery(ids);
+}
+
+async function exportDelivery(resultIds = []) {
+  const body = {
+    profile: $("deliveryProfileSelect").value,
+    projectId: state.activeProjectId,
+    resultIds
+  };
+  const payload = await api("/api/results/delivery-export", {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+  setStatus(`Delivery kit exported: ${payload.export.filename}`);
+  downloadExport(payload.export.filename);
+}
+
 function bind() {
   $("refreshButton").addEventListener("click", () =>
     refreshAll().catch((error) => setStatus(error.message, true))
   );
+  $("projectSelect").addEventListener("change", () => {
+    state.activeProjectId = $("projectSelect").value;
+    state.activeRecordId = null;
+    state.activeResultId = null;
+    state.selectedResultIds.clear();
+    refreshAll().catch((error) => setStatus(error.message, true));
+  });
   $("modelSyncButton").addEventListener("click", () =>
     refreshModels().catch((error) => setStatus(error.message, true))
   );
@@ -458,6 +682,16 @@ function bind() {
     document.querySelectorAll(".record-check").forEach((input) => {
       input.checked = $("selectAllRecords").checked;
     });
+  });
+  $("selectAllResults").addEventListener("change", () => {
+    const checked = $("selectAllResults").checked;
+    state.results
+      .filter((result) => result.status === "completed")
+      .forEach((result) => {
+        if (checked) state.selectedResultIds.add(result.id);
+        else state.selectedResultIds.delete(result.id);
+      });
+    renderResults();
   });
   $("providerSelect").addEventListener("change", renderModels);
   $("previewButton").addEventListener("click", () =>
@@ -515,9 +749,18 @@ function bind() {
     if (result) window.location.href = `/api/results/${result.id}/export`;
   });
   $("exportAllButton").addEventListener("click", () =>
-    api("/api/results/export", { method: "POST", body: "{}" })
+    api("/api/results/export", {
+      method: "POST",
+      body: JSON.stringify({ projectId: state.activeProjectId })
+    })
       .then((payload) => setStatus(`Exported ${payload.export.filename}`))
       .catch((error) => setStatus(error.message, true))
+  );
+  $("exportDeliverySelectedButton").addEventListener("click", () =>
+    exportDeliverySelected().catch((error) => setStatus(error.message, true))
+  );
+  $("exportDeliveryAllButton").addEventListener("click", () =>
+    exportDelivery().catch((error) => setStatus(error.message, true))
   );
   $("printButton").addEventListener("click", () => window.print());
   window.addEventListener("beforeunload", (event) => {
@@ -530,3 +773,13 @@ function bind() {
 
 bind();
 refreshAll().catch((error) => setStatus(error.message, true));
+
+window.addEventListener("error", (event) => {
+  console.error("Unhandled browser error", event.error || event.message);
+  setStatus("Unexpected browser error. Check the console and app log for details.", true);
+});
+
+window.addEventListener("unhandledrejection", (event) => {
+  console.error("Unhandled browser promise rejection", event.reason);
+  setStatus("Unexpected browser error. Check the console and app log for details.", true);
+});

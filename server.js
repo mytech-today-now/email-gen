@@ -22,3 +22,10 @@ function shutdown(signal) {
 
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
+process.on("unhandledRejection", (reason) => {
+  context.logger.error({ err: reason }, "Unhandled promise rejection");
+});
+process.on("uncaughtException", (error) => {
+  context.logger.fatal({ err: error }, "Uncaught exception");
+  shutdown("uncaughtException");
+});

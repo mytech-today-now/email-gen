@@ -13,6 +13,10 @@
         <p id="statusLine" aria-live="polite" data-testid="status-line">Starting...</p>
       </div>
       <div class="topbar-actions">
+        <label class="field project-field" for="projectSelect">
+          <span>Project</span>
+          <select id="projectSelect" data-testid="project-select"></select>
+        </label>
         <button id="refreshButton" type="button" data-testid="refresh-button">Refresh</button>
       </div>
     </header>
@@ -34,7 +38,7 @@
             </label>
           </div>
         </div>
-        <div class="grid two">
+        <div class="content-grid data-grid">
           <div class="table-wrap">
             <table>
               <caption>
@@ -53,11 +57,15 @@
               <tbody id="recordRows" data-testid="record-rows"></tbody>
             </table>
           </div>
-          <div class="panel">
-            <label for="templateSelect">Prompt template</label>
-            <select id="templateSelect" data-testid="template-select"></select>
-            <label for="recordSelect">Preview record</label>
-            <select id="recordSelect" data-testid="record-select"></select>
+          <div class="panel form-stack">
+            <label class="field" for="templateSelect">
+              <span>Prompt template</span>
+              <select id="templateSelect" data-testid="template-select"></select>
+            </label>
+            <label class="field" for="recordSelect">
+              <span>Preview record</span>
+              <select id="recordSelect" data-testid="record-select"></select>
+            </label>
             <button id="previewButton" type="button" data-testid="preview-button">Preview Prompt</button>
             <pre id="promptPreview" class="preview" data-testid="prompt-preview"></pre>
             <div id="templateWarnings" class="warning-list" data-testid="template-warnings"></div>
@@ -70,34 +78,73 @@
           <h2 id="processingHeading">Processing</h2>
           <div id="jobSummary" aria-live="polite" data-testid="job-summary"></div>
         </div>
-        <div class="controls">
-          <label for="providerSelect">Provider</label>
-          <select id="providerSelect" data-testid="provider-select"></select>
-          <label for="modelSelect">Model</label>
-          <select id="modelSelect" data-testid="model-select"></select>
-          <label for="addendumSelect">Addendum</label>
-          <select id="addendumSelect" data-testid="addendum-select"></select>
-          <label class="check"><input id="addendumEnabled" type="checkbox" /> Addendum</label>
-          <label class="check"><input id="researchEnabled" type="checkbox" /> Research</label>
-          <label for="concurrencyInput">Concurrency</label>
-          <input id="concurrencyInput" type="number" min="1" value="1" data-testid="concurrency-input" />
-          <label for="delayInput">Delay ms</label>
-          <input id="delayInput" type="number" min="0" value="750" data-testid="delay-input" />
+        <div class="processing-layout">
+          <fieldset class="control-cluster">
+            <legend>Generation</legend>
+            <div class="control-grid">
+              <label class="field" for="providerSelect">
+                <span>Provider</span>
+                <select id="providerSelect" data-testid="provider-select"></select>
+              </label>
+              <label class="field model-field" for="modelSelect">
+                <span>Model</span>
+                <select id="modelSelect" data-testid="model-select"></select>
+              </label>
+              <label class="field" for="addendumSelect">
+                <span>Addendum</span>
+                <select id="addendumSelect" data-testid="addendum-select"></select>
+              </label>
+            </div>
+          </fieldset>
+          <fieldset class="control-cluster">
+            <legend>Options</legend>
+            <div class="option-grid">
+              <label class="switch">
+                <input id="addendumEnabled" type="checkbox" />
+                <span>Addendum</span>
+              </label>
+              <label class="switch">
+                <input id="researchEnabled" type="checkbox" />
+                <span>Research</span>
+              </label>
+              <label class="field compact-field" for="concurrencyInput">
+                <span>Concurrency</span>
+                <input
+                  id="concurrencyInput"
+                  type="number"
+                  min="1"
+                  value="1"
+                  data-testid="concurrency-input"
+                />
+              </label>
+              <label class="field compact-field" for="delayInput">
+                <span>Delay ms</span>
+                <input id="delayInput" type="number" min="0" value="750" data-testid="delay-input" />
+              </label>
+            </div>
+          </fieldset>
         </div>
-        <div class="button-row">
-          <button id="processCurrentButton" type="button" data-testid="process-current">
-            Process Current
-          </button>
-          <button id="processSelectedButton" type="button" data-testid="process-selected">
-            Process Selected
-          </button>
-          <label for="rangeStart">Range</label>
-          <input id="rangeStart" type="number" min="1" placeholder="Start" />
-          <input id="rangeEnd" type="number" min="1" placeholder="End" />
-          <button id="processRangeButton" type="button" data-testid="process-range">Process Range</button>
-          <button id="processAllButton" type="button" data-testid="process-all">Process All</button>
-          <button id="stopButton" type="button" data-testid="stop-button" disabled>Stop Scheduling</button>
-          <button id="retryButton" type="button" data-testid="retry-button" disabled>Retry Failed</button>
+        <div class="action-bar">
+          <div class="action-group primary-actions">
+            <button id="processCurrentButton" type="button" data-testid="process-current">
+              Process Current
+            </button>
+            <button id="processSelectedButton" type="button" data-testid="process-selected">
+              Process Selected
+            </button>
+            <button id="processAllButton" type="button" data-testid="process-all">Process All</button>
+          </div>
+          <div class="range-group">
+            <label for="rangeStart">Range</label>
+            <input id="rangeStart" type="number" min="1" placeholder="Start" />
+            <span class="range-separator" aria-hidden="true">to</span>
+            <input id="rangeEnd" type="number" min="1" placeholder="End" />
+            <button id="processRangeButton" type="button" data-testid="process-range">Process Range</button>
+          </div>
+          <div class="action-group secondary-actions">
+            <button id="stopButton" type="button" data-testid="stop-button" disabled>Stop Scheduling</button>
+            <button id="retryButton" type="button" data-testid="retry-button" disabled>Retry Failed</button>
+          </div>
         </div>
       </section>
 
@@ -109,7 +156,7 @@
             <button id="modelSyncButton" type="button" data-testid="model-sync-button">Refresh Models</button>
           </div>
         </div>
-        <div class="grid two">
+        <div class="content-grid catalog-grid">
           <div class="table-wrap">
             <table>
               <caption>
@@ -150,29 +197,73 @@
           <h2 id="resultsHeading">Results</h2>
           <button id="exportAllButton" type="button" data-testid="export-all">Export Completed</button>
         </div>
-        <div class="grid two results-grid">
-          <div class="table-wrap">
-            <table>
-              <caption>
-                Generated results
-              </caption>
-              <thead>
-                <tr>
-                  <th scope="col">Record</th>
-                  <th scope="col">Status</th>
-                  <th scope="col">Subject</th>
-                </tr>
-              </thead>
-              <tbody id="resultRows" data-testid="result-rows"></tbody>
-            </table>
+        <div class="content-grid results-grid">
+          <div class="results-list">
+            <section class="delivery-tools" aria-labelledby="deliveryHeading">
+              <h3 id="deliveryHeading">Send / Import</h3>
+              <label class="field delivery-target" for="deliveryProfileSelect">
+                <span>Target</span>
+                <select id="deliveryProfileSelect" data-testid="delivery-profile-select">
+                  <option value="all">All services and clients</option>
+                  <option value="beehiiv">Beehiiv</option>
+                  <option value="mailchimp">Mailchimp</option>
+                  <option value="constant-contact">Constant Contact</option>
+                  <option value="email-clients">Outlook, Thunderbird, AOL</option>
+                  <option value="generic">Generic or API handoff</option>
+                </select>
+              </label>
+              <div class="button-row">
+                <button
+                  id="exportDeliverySelectedButton"
+                  type="button"
+                  data-testid="export-delivery-selected"
+                >
+                  Export Selected Kit
+                </button>
+                <button id="exportDeliveryAllButton" type="button" data-testid="export-delivery-all">
+                  Export Completed Kit
+                </button>
+              </div>
+            </section>
+            <div class="table-wrap">
+              <table>
+                <caption>
+                  Generated results
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">
+                      <input
+                        id="selectAllResults"
+                        type="checkbox"
+                        aria-label="Select all completed results"
+                        data-testid="select-all-results"
+                      />
+                    </th>
+                    <th scope="col">Record</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Subject</th>
+                  </tr>
+                </thead>
+                <tbody id="resultRows" data-testid="result-rows"></tbody>
+              </table>
+            </div>
           </div>
           <article class="panel result-panel" aria-labelledby="activeResultHeading">
             <h3 id="activeResultHeading">Selected Result</h3>
             <div id="resultError" class="result-error" role="alert" hidden data-testid="result-error"></div>
-            <label for="subjectInput">Subject</label>
-            <input id="subjectInput" type="text" data-testid="subject-input" />
-            <label for="bodyInput">Body HTML</label>
-            <textarea id="bodyInput" rows="10" data-testid="body-input"></textarea>
+            <div class="contact-summary" data-testid="selected-contact">
+              <span>Email</span>
+              <strong id="selectedContactValue">No result selected</strong>
+            </div>
+            <label class="field" for="subjectInput">
+              <span>Subject</span>
+              <input id="subjectInput" type="text" data-testid="subject-input" />
+            </label>
+            <label class="field" for="bodyInput">
+              <span>Body HTML</span>
+              <textarea id="bodyInput" rows="10" data-testid="body-input"></textarea>
+            </label>
             <div class="button-row">
               <button id="saveEditButton" type="button" data-testid="save-edit">Save Edits</button>
               <button id="discardEditButton" type="button" data-testid="discard-edit">Discard</button>

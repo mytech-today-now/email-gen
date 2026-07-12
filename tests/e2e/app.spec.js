@@ -16,7 +16,7 @@ test("renders expanded provider and model catalog", async ({ page }) => {
 
   await providerSelect.selectOption("openai");
   await expect(modelSelect.locator('option[value="gpt-5.6-sol"]')).toHaveText("GPT-5.6 Sol");
-  await expect(modelSelect.locator('option[value="gpt-image-2"]')).toBeDisabled();
+  await expect(modelSelect.locator('option[value="gpt-image-2"]')).toHaveJSProperty("disabled", true);
 
   await providerSelect.selectOption("anthropic");
   await expect(modelSelect.locator('option[value="claude-fable-5"]')).toHaveText("Claude Fable 5");
@@ -26,11 +26,11 @@ test("renders expanded provider and model catalog", async ({ page }) => {
 
   await providerSelect.selectOption("venice");
   await expect(modelSelect.locator('option[value="llama-3.3-70b"]')).toHaveText("Llama 3.3 70B");
-  await expect(modelSelect.locator('option[value="fluently-xl"]')).toBeDisabled();
+  await expect(modelSelect.locator('option[value="fluently-xl"]')).toHaveJSProperty("disabled", true);
 
   await providerSelect.selectOption("lumaai");
-  await expect(modelSelect.locator('option[value="ray-3.2"]')).toBeDisabled();
-  await expect(modelSelect.locator('option[value="ray-2"]')).toBeDisabled();
+  await expect(modelSelect.locator('option[value="ray-3.2"]')).toHaveJSProperty("disabled", true);
+  await expect(modelSelect.locator('option[value="ray-2"]')).toHaveJSProperty("disabled", true);
 
   await providerSelect.selectOption("mock");
   await expect(modelSelect.locator('option[value="mock-structured-v1"]')).toHaveText("Mock Structured v1");
@@ -43,7 +43,7 @@ test("complete mock workflow", async ({ page, context }) => {
   await page.getByTestId("load-sample").click();
   await expect(page.getByTestId("record-rows")).toContainText("Acadian Grille & Bar");
   await page.getByTestId("preview-button").click();
-  await expect(page.getByTestId("prompt-preview")).toContainText("Acadian Grille & Bar");
+  await expect(page.getByTestId("prompt-preview")).toContainText("https://acadiangrille.com/");
   await page.getByTestId("provider-select").selectOption("mock");
   await page.locator("#researchEnabled").uncheck();
   await page.getByTestId("process-current").click();
@@ -59,6 +59,37 @@ test("complete mock workflow", async ({ page, context }) => {
   await expect(page.getByTestId("status-line")).toContainText("Subject copied");
   await page.getByTestId("export-all").click();
   await expect(page.getByTestId("status-line")).toContainText(/Exported/);
+  await page.getByTestId("delivery-profile-select").selectOption("mailchimp");
+  await page.getByTestId("export-delivery-selected").click();
+  await expect(page.getByTestId("status-line")).toContainText("Select one or more completed results first.");
+  const completedRow = page.getByTestId("result-rows").locator("tr", { hasText: "Saved e2e subject" });
+  await completedRow.click();
+  await expect(completedRow.locator(".result-check")).toBeChecked();
+  await page.getByTestId("export-delivery-selected").click();
+  await expect(page.getByTestId("status-line")).toContainText(/Delivery kit exported: delivery-mailchimp/);
+  await page.getByTestId("delivery-profile-select").selectOption("email-clients");
+  await page.getByTestId("export-delivery-all").click();
+  await expect(page.getByTestId("status-line")).toContainText(
+    /Delivery kit exported: delivery-email-clients/
+  );
+});
+
+test("clicking a generated result row updates the editable selected result", async ({ page }) => {
+  await page.goto("/");
+  await page.getByTestId("load-sample").click();
+  await expect(page.getByTestId("record-rows")).toContainText("Acadian Grille & Bar");
+  await page.getByTestId("provider-select").selectOption("mock");
+  await page.locator("#researchEnabled").uncheck();
+  await page.getByTestId("process-all").click();
+  await expect(page.getByTestId("result-rows").locator("tr")).toHaveCount(4, { timeout: 15000 });
+
+  const tomoRow = page.getByTestId("result-rows").locator("tr", { hasText: "Tomo Sushi & Ramen" });
+  await tomoRow.click();
+  await expect(tomoRow).toHaveClass(/is-active/);
+  await expect(tomoRow.locator(".result-check")).toBeChecked();
+  await expect(page.getByTestId("subject-input")).toHaveValue(/Tomo Sushi & Ramen/);
+  await expect(page.getByTestId("body-input")).toHaveValue(/Tomo Sushi & Ramen/);
+  await expect(page.getByTestId("selected-contact")).toContainText(/No email|@|contact/i);
 });
 
 test("processes a restaurant with browser-backed research enabled", async ({ page }) => {
