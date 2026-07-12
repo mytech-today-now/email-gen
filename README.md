@@ -203,13 +203,17 @@ npm run dev
 ## Usage
 
 1. Load the bundled sample or import a supported file.
-2. Select a prompt template.
-3. Choose a record and preview the rendered prompt.
-4. Resolve required-variable warnings before processing.
-5. Select provider/model, optional addendum, research, concurrency, and delay.
-6. Process current, selected, range, or all records.
-7. Review result status; individual failures do not stop the batch.
-8. Edit subject/body, save, regenerate, copy, print, or export.
+2. Use the Project selector in the header to switch between imported datasets. Each import creates a separate project with an auto-generated name based on the prompt, source, and records.
+3. Select a prompt template.
+4. Choose a record and preview the rendered prompt.
+5. Resolve required-variable warnings before processing.
+6. Select provider/model, optional addendum, research, concurrency, and delay.
+7. Process current, selected, range, or all records.
+8. Click a row in Generated results to make it the Selected Result. The subject, body, rendered preview, prompt/research details, contact email or contact-page fallback, edit controls, copy controls, export, and print actions follow the highlighted row.
+9. Use the checkbox column to select completed results for delivery-kit export.
+10. Edit subject/body, save, regenerate, copy, print, export HTML, or export delivery kits.
+
+Projects are siloed: records, prompt choice, jobs, generated results, edits, and exports are scoped to the selected project so new imports do not overwrite earlier work.
 
 ## Supported Import Formats
 
@@ -273,7 +277,10 @@ Generated HTML is sanitized and uses conservative table markup with inline CSS. 
 - Database: `storage/email-gen.sqlite` by default.
 - Logs: `logs/app.log` with rotation.
 - Exports: `output/`.
+- Projects: stored in SQLite and shown in the header Project selector.
 - Model catalog tables: `ai_models`, `provider_sync_status`, `provider_model_response_cache`, and `model_sync_runs`.
+
+The server logs request start/completion, imports, processing failures, manual edits, exports, delivery-kit creation, research activity, startup/shutdown, and unhandled process errors to both the console and rotating log file. Secret-like values are redacted.
 
 Back up `storage/email-gen.sqlite` while the app is stopped. Reset by stopping the app and deleting the SQLite files in `storage/`.
 
