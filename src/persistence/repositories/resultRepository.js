@@ -206,6 +206,33 @@ export function createResultRepository(db) {
         .prepare("SELECT * FROM results WHERE job_id = ? AND status = 'failed' ORDER BY updated_at")
         .all(jobId)
         .map(rowToResult);
+    },
+
+    delete(id, { projectId } = {}) {
+      const current = projectId ? this.get(id) : this.get(id);
+      if (!current || (projectId && current.projectId !== projectId)) return null;
+      const tx = db.transaction(() => {
+        db.prepare("DELETE FROM result_versions WHERE result_id = ?").run(id);
+        db.prepare("DELETE FROM results WHERE id = ?").run(id);
+      });
+      tx();
+      return current;
+    },
+
+    deleteMany(ids, { projectId } = {}) {
+      if (!ids.length) return [];
+      const deleted = [];
+      const tx = db.transaction(() => {
+        for (const id of ids) {
+          const current = this.get(id);
+          if (!current || (projectId && current.projectId !== projectId)) continue;
+          db.prepare("DELETE FROM result_versions WHERE result_id = ?").run(id);
+          db.prepare("DELETE FROM results WHERE id = ?").run(id);
+          deleted.push(current);
+        }
+      });
+      tx();
+      return deleted;
     }
   };
 }

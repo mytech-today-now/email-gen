@@ -176,6 +176,46 @@ describe("API integration", () => {
     expect(fetched.body.versions).toHaveLength(1);
   });
 
+  it("deletes one or many results from the generated results table data set", async () => {
+    const sample = await harness.request.post("/api/records/load-sample").send({}).expect(200);
+    const projectId = sample.body.project.id;
+
+    const jobResponse = await harness.request
+      .post("/api/jobs")
+      .send({
+        projectId,
+        mode: "all",
+        templateName: "restaurant-ai-sms.txt",
+        provider: "mock",
+        model: "mock-structured-v1",
+        researchEnabled: false,
+        concurrency: 1,
+        delayMs: 0
+      })
+      .expect(202);
+    await waitForJob(harness.request, jobResponse.body.job.id);
+
+    const beforeDelete = await harness.request.get(`/api/results?projectId=${projectId}`).expect(200);
+    expect(beforeDelete.body.results).toHaveLength(4);
+
+    await harness.request
+      .delete(`/api/results/${beforeDelete.body.results[0].id}?projectId=${projectId}`)
+      .expect(200);
+
+    const afterSingleDelete = await harness.request.get(`/api/results?projectId=${projectId}`).expect(200);
+    expect(afterSingleDelete.body.results).toHaveLength(3);
+
+    const bulkIds = afterSingleDelete.body.results.slice(0, 2).map((result) => result.id);
+    const bulkDelete = await harness.request
+      .post("/api/results/delete")
+      .send({ projectId, resultIds: bulkIds })
+      .expect(200);
+    expect(bulkDelete.body.deletedCount).toBe(2);
+
+    const afterBulkDelete = await harness.request.get(`/api/results?projectId=${projectId}`).expect(200);
+    expect(afterBulkDelete.body.results).toHaveLength(1);
+  });
+
   it("exports completed emails as a delivery kit for sending systems", async () => {
     const sample = await harness.request.post("/api/records/load-sample").send({}).expect(200);
     const jobResponse = await harness.request

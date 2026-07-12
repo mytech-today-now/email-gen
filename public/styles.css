@@ -362,6 +362,30 @@ th {
   z-index: 1;
 }
 
+.sort-button {
+  min-height: auto;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  color: inherit;
+  font-weight: 700;
+}
+
+.sort-button::after {
+  content: "";
+  display: inline-block;
+  width: 0.8em;
+}
+
+.sort-button[data-sort-direction="asc"]::after {
+  content: "↑";
+}
+
+.sort-button[data-sort-direction="desc"]::after {
+  content: "↓";
+}
+
 tr.is-active {
   background: #eef7f4;
 }

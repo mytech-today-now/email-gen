@@ -132,6 +132,35 @@ test("clicking a generated result row updates the editable selected result", asy
   await expect(page.getByTestId("selected-contact")).toContainText(/No email|@|contact/i);
 });
 
+test("sorts and deletes generated results with multi-select and delete key", async ({ page }) => {
+  page.on("dialog", (dialog) => dialog.accept());
+
+  await page.goto("/");
+  await page.getByTestId("load-sample").click();
+  await page.getByTestId("provider-select").selectOption("mock");
+  await page.locator("#researchEnabled").uncheck();
+  await page.getByTestId("process-all").click();
+  await expect(page.getByTestId("result-rows").locator("tr")).toHaveCount(4, { timeout: 15000 });
+
+  await page.getByTestId("sort-results-record").click();
+  await expect(page.getByTestId("result-rows").locator("tr").first()).toContainText("Acadian Grille & Bar");
+
+  const firstRow = page.getByTestId("result-rows").locator("tr").nth(0);
+  const secondRow = page.getByTestId("result-rows").locator("tr").nth(1);
+  await firstRow.click();
+  await secondRow.click({ modifiers: ["Shift"] });
+  await expect(firstRow.locator(".result-check")).toBeChecked();
+  await expect(secondRow.locator(".result-check")).toBeChecked();
+
+  await page.getByTestId("delete-selected-results").click();
+  await expect(page.getByTestId("result-rows").locator("tr")).toHaveCount(2);
+
+  const remainingFirstRow = page.getByTestId("result-rows").locator("tr").first();
+  await remainingFirstRow.click();
+  await remainingFirstRow.press("Delete");
+  await expect(page.getByTestId("result-rows").locator("tr")).toHaveCount(1);
+});
+
 test("processes a restaurant with browser-backed research enabled", async ({ page }) => {
   await page.goto("/");
   await page.getByTestId("file-input").setInputFiles({

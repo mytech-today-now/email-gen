@@ -22,6 +22,11 @@ const DeliveryExportSchema = z.object({
   projectId: z.string().optional(),
   resultIds: z.array(z.string().trim().min(1)).default([])
 });
+
+const DeleteResultsSchema = z.object({
+  projectId: z.string().optional(),
+  resultIds: z.array(z.string().trim().min(1)).min(1)
+});
 const deliveryProfileIds = new Set(deliveryExportProfiles.map((profile) => profile.id));
 
 export function resultRoutes(context) {
@@ -48,6 +53,47 @@ export function resultRoutes(context) {
       const result = context.repositories.results.get(req.params.id);
       if (!result) throw new AppError("RESULT_NOT_FOUND", "Result was not found.", 404);
       res.json({ result, versions: context.repositories.results.versions(result.id) });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.delete("/results/:id", (req, res, next) => {
+    try {
+      const project = context.repositories.projects.resolve(req.query.projectId);
+      const deleted = context.repositories.results.delete(req.params.id, { projectId: project?.id });
+      if (!deleted) throw new AppError("RESULT_NOT_FOUND", "Result was not found.", 404);
+      context.logger.info(
+        { resultId: deleted.id, projectId: deleted.projectId, subject: deleted.subject },
+        "Result deleted"
+      );
+      res.json({ deleted: { id: deleted.id }, project });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post("/results/delete", validateBody(DeleteResultsSchema), (req, res, next) => {
+    try {
+      const project = context.repositories.projects.resolve(req.body.projectId);
+      const deleted = context.repositories.results.deleteMany(req.body.resultIds, { projectId: project?.id });
+      if (!deleted.length) {
+        throw new AppError("NO_RESULTS_DELETED", "No matching results were found to delete.", 404);
+      }
+      context.logger.info(
+        {
+          projectId: project?.id,
+          requestedCount: req.body.resultIds.length,
+          deletedCount: deleted.length,
+          deletedIds: deleted.map((result) => result.id)
+        },
+        "Results deleted in bulk"
+      );
+      res.json({
+        deleted: deleted.map((result) => ({ id: result.id })),
+        deletedCount: deleted.length,
+        project
+      });
     } catch (error) {
       next(error);
     }

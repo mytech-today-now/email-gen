@@ -195,7 +195,15 @@
       <section class="band" aria-labelledby="resultsHeading">
         <div class="band-header">
           <h2 id="resultsHeading">Results</h2>
-          <button id="exportAllButton" type="button" data-testid="export-all">Export Completed</button>
+          <div class="button-row">
+            <button id="deleteSelectedResultsButton" type="button" data-testid="delete-selected-results">
+              Delete Selected
+            </button>
+            <button id="deleteActiveResultButton" type="button" data-testid="delete-active-result">
+              Delete Current
+            </button>
+            <button id="exportAllButton" type="button" data-testid="export-all">Export Completed</button>
+          </div>
         </div>
         <div class="content-grid results-grid">
           <div class="results-list">
@@ -240,9 +248,39 @@
                         data-testid="select-all-results"
                       />
                     </th>
-                    <th scope="col">Record</th>
-                    <th scope="col">Status</th>
-                    <th scope="col">Subject</th>
+                    <th scope="col">
+                      <button
+                        id="sortResultsByRecord"
+                        class="sort-button"
+                        type="button"
+                        data-sort-key="record"
+                        data-testid="sort-results-record"
+                      >
+                        Record
+                      </button>
+                    </th>
+                    <th scope="col">
+                      <button
+                        id="sortResultsByStatus"
+                        class="sort-button"
+                        type="button"
+                        data-sort-key="status"
+                        data-testid="sort-results-status"
+                      >
+                        Status
+                      </button>
+                    </th>
+                    <th scope="col">
+                      <button
+                        id="sortResultsBySubject"
+                        class="sort-button"
+                        type="button"
+                        data-sort-key="subject"
+                        data-testid="sort-results-subject"
+                      >
+                        Subject
+                      </button>
+                    </th>
                   </tr>
                 </thead>
                 <tbody id="resultRows" data-testid="result-rows"></tbody>

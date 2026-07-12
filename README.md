@@ -210,8 +210,10 @@ npm run dev
 6. Select provider/model, optional addendum, research, concurrency, and delay.
 7. Process current, selected, range, or all records.
 8. Click a row in Generated results to make it the Selected Result. The subject, body, rendered preview, prompt/research details, contact email or contact-page fallback, edit controls, copy controls, export, and print actions follow the highlighted row.
-9. Use the checkbox column to select completed results for delivery-kit export.
-10. Edit subject/body, save, regenerate, copy, print, export HTML, or export delivery kits.
+9. Use the Generated results table headers to sort by record, status, or subject.
+10. Use the checkbox column, Shift-click range selection, or Ctrl/Cmd-click row toggles to multi-select completed results for export or deletion.
+11. Delete a single current result, bulk delete selected results, or press the `Delete` key while focused in the results table to remove selected results.
+12. Edit subject/body, save, regenerate, copy, print, export HTML, or export delivery kits.
 
 Projects are siloed: records, prompt choice, jobs, generated results, edits, and exports are scoped to the selected project so new imports do not overwrite earlier work.
 

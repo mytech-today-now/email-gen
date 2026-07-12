@@ -12,6 +12,8 @@ const state = {
   activeRecordId: null,
   activeResultId: null,
   selectedResultIds: new Set(),
+  resultSort: { key: "updatedAt", direction: "desc" },
+  resultAnchorId: null,
   activeJobId: null,
   unsaved: false,
   pollTimer: null
@@ -84,6 +86,38 @@ function activeRecord() {
 
 function activeResult() {
   return state.results.find((result) => result.id === state.activeResultId) || state.results[0] || null;
+}
+
+function sortedResults() {
+  const collator = new Intl.Collator(undefined, { sensitivity: "base", numeric: true });
+  const items = [...state.results];
+  const { key, direction } = state.resultSort;
+  items.sort((left, right) => {
+    const leftRecord = state.records.find((item) => item.id === left.recordId);
+    const rightRecord = state.records.find((item) => item.id === right.recordId);
+    const leftValue =
+      key === "record"
+        ? leftRecord?.displayName || ""
+        : key === "status"
+          ? left.status || ""
+          : key === "subject"
+            ? left.subject || ""
+            : left.updatedAt || "";
+    const rightValue =
+      key === "record"
+        ? rightRecord?.displayName || ""
+        : key === "status"
+          ? right.status || ""
+          : key === "subject"
+            ? right.subject || ""
+            : right.updatedAt || "";
+    const comparison =
+      key === "updatedAt"
+        ? String(leftValue).localeCompare(String(rightValue))
+        : collator.compare(String(leftValue), String(rightValue));
+    return direction === "asc" ? comparison : -comparison;
+  });
+  return items;
 }
 
 function populateSelect(select, items, getValue, getLabel, configureOption = () => {}) {
@@ -248,13 +282,15 @@ function renderResults() {
   rows.innerHTML = "";
   const currentIds = new Set(state.results.map((result) => result.id));
   state.selectedResultIds = new Set([...state.selectedResultIds].filter((id) => currentIds.has(id)));
+  if (state.resultAnchorId && !currentIds.has(state.resultAnchorId)) state.resultAnchorId = null;
   if (!currentIds.has(state.activeResultId)) state.activeResultId = state.results[0]?.id || null;
-  for (const result of state.results) {
+  for (const result of sortedResults()) {
     const record = state.records.find((item) => item.id === result.recordId);
     const tr = document.createElement("tr");
     if (result.id === state.activeResultId) tr.classList.add("is-active");
     if (state.selectedResultIds.has(result.id)) tr.classList.add("is-selected");
     tr.dataset.resultRowId = result.id;
+    tr.tabIndex = 0;
 
     const selectCell = document.createElement("td");
     const checkbox = document.createElement("input");
@@ -282,9 +318,19 @@ function renderResults() {
     rows.append(tr);
   }
   syncResultSelectAll();
+  syncResultSortButtons();
   rows.querySelectorAll("[data-result-row-id]").forEach((row) => {
-    row.addEventListener("click", () => {
-      activateResultRow(row.dataset.resultRowId);
+    row.addEventListener("click", (event) => {
+      activateResultRow(row.dataset.resultRowId, {
+        range: event.shiftKey,
+        preserveSelection: event.ctrlKey || event.metaKey
+      });
+    });
+    row.addEventListener("keydown", (event) => {
+      if (event.key === "Delete") {
+        event.preventDefault();
+        deleteSelectedResults().catch((error) => setStatus(error.message, true));
+      }
     });
   });
   rows.querySelectorAll(".result-check").forEach((checkbox) => {
@@ -310,6 +356,19 @@ function syncResultSelectAll() {
   selectAll.indeterminate = selectedCompleted.length > 0 && selectedCompleted.length < completed.length;
 }
 
+function syncResultSortButtons() {
+  document.querySelectorAll("[data-sort-key]").forEach((button) => {
+    const direction = button.dataset.sortKey === state.resultSort.key ? state.resultSort.direction : "";
+    button.dataset.sortDirection = direction;
+    button.setAttribute(
+      "aria-label",
+      direction
+        ? `Sort by ${button.dataset.sortKey}, currently ${direction}`
+        : `Sort by ${button.dataset.sortKey}`
+    );
+  });
+}
+
 function toggleResultSelection(resultId, force) {
   const result = state.results.find((item) => item.id === resultId);
   if (!result || result.status !== "completed") return;
@@ -317,6 +376,25 @@ function toggleResultSelection(resultId, force) {
   if (shouldSelect) state.selectedResultIds.add(resultId);
   else state.selectedResultIds.delete(resultId);
   renderResults();
+}
+
+function sortedSelectableResultIds() {
+  return sortedResults().map((result) => result.id);
+}
+
+function selectResultRange(targetId) {
+  const ids = sortedSelectableResultIds();
+  const anchorId = state.resultAnchorId ?? state.activeResultId ?? targetId;
+  const start = ids.indexOf(anchorId);
+  const end = ids.indexOf(targetId);
+  if (start === -1 || end === -1) {
+    state.selectedResultIds.add(targetId);
+    return;
+  }
+  const [from, to] = start <= end ? [start, end] : [end, start];
+  for (const id of ids.slice(from, to + 1)) {
+    state.selectedResultIds.add(id);
+  }
 }
 
 function renderActiveResult() {
@@ -333,10 +411,12 @@ function renderActiveResult() {
     "copyHtmlButton",
     "copyTextButton",
     "exportOneButton",
-    "printButton"
+    "printButton",
+    "deleteActiveResultButton"
   ]) {
     $(id).disabled = disabled;
   }
+  $("deleteSelectedResultsButton").disabled = state.selectedResultIds.size === 0;
   if (!result) {
     $("subjectInput").value = "";
     $("bodyInput").value = "";
@@ -367,17 +447,35 @@ function formatJobSummary(job) {
 async function selectResult(id) {
   if (state.unsaved && !confirm("Discard unsaved changes?")) return;
   state.activeResultId = id;
+  state.resultAnchorId = id;
   renderResults();
 }
 
-function activateResultRow(id) {
+function activateResultRow(id, options = {}) {
   if (state.unsaved && !confirm("Discard unsaved changes?")) return;
   state.activeResultId = id;
-  const result = state.results.find((item) => item.id === id);
-  if (result?.status === "completed") {
-    if (state.selectedResultIds.has(id)) state.selectedResultIds.delete(id);
-    else state.selectedResultIds.add(id);
+  if (options.range) {
+    selectResultRange(id);
+  } else if (options.preserveSelection) {
+    const result = state.results.find((item) => item.id === id);
+    if (result?.status === "completed") {
+      if (state.selectedResultIds.has(id)) state.selectedResultIds.delete(id);
+      else state.selectedResultIds.add(id);
+    }
+  } else {
+    state.selectedResultIds.clear();
+    const result = state.results.find((item) => item.id === id);
+    if (result?.status === "completed") state.selectedResultIds.add(id);
   }
+  state.resultAnchorId = id;
+  renderResults();
+}
+
+function setResultSort(key) {
+  state.resultSort =
+    state.resultSort.key === key
+      ? { key, direction: state.resultSort.direction === "asc" ? "desc" : "asc" }
+      : { key, direction: key === "updatedAt" ? "desc" : "asc" };
   renderResults();
 }
 
@@ -703,6 +801,52 @@ async function exportDelivery(resultIds = []) {
   downloadExport(payload.export.filename);
 }
 
+async function deleteSelectedResults() {
+  const ids = selectedResultIds();
+  if (!ids.length) {
+    setStatus("Select one or more results to delete.", true);
+    return;
+  }
+  if (
+    state.unsaved &&
+    ids.includes(state.activeResultId) &&
+    !confirm("Discard unsaved changes and delete?")
+  ) {
+    return;
+  }
+  if (!confirm(`Delete ${ids.length} selected result${ids.length === 1 ? "" : "s"}?`)) return;
+  const payload = await api("/api/results/delete", {
+    method: "POST",
+    body: JSON.stringify({
+      projectId: state.projectApiAvailable ? state.activeProjectId : undefined,
+      resultIds: ids
+    })
+  });
+  const deletedIds = new Set(payload.deleted.map((item) => item.id));
+  state.results = state.results.filter((result) => !deletedIds.has(result.id));
+  state.selectedResultIds = new Set([...state.selectedResultIds].filter((id) => !deletedIds.has(id)));
+  if (deletedIds.has(state.activeResultId)) {
+    state.activeResultId = state.results[0]?.id || null;
+    state.unsaved = false;
+  }
+  renderResults();
+  setStatus(`Deleted ${payload.deletedCount} result${payload.deletedCount === 1 ? "" : "s"}`);
+}
+
+async function deleteActiveResult() {
+  const result = activeResult();
+  if (!result) return;
+  if (state.unsaved && !confirm("Discard unsaved changes and delete this result?")) return;
+  if (!confirm("Delete the current result?")) return;
+  const payload = await api(`${withProject(`/api/results/${result.id}`)}`, { method: "DELETE" });
+  state.results = state.results.filter((item) => item.id !== payload.deleted.id);
+  state.selectedResultIds.delete(payload.deleted.id);
+  state.activeResultId = state.results[0]?.id || null;
+  state.unsaved = false;
+  renderResults();
+  setStatus("Current result deleted");
+}
+
 function bind() {
   $("refreshButton").addEventListener("click", () =>
     refreshAll().catch((error) => setStatus(error.message, true))
@@ -743,6 +887,9 @@ function bind() {
       });
     renderResults();
   });
+  $("sortResultsByRecord").addEventListener("click", () => setResultSort("record"));
+  $("sortResultsByStatus").addEventListener("click", () => setResultSort("status"));
+  $("sortResultsBySubject").addEventListener("click", () => setResultSort("subject"));
   $("providerSelect").addEventListener("change", renderModels);
   $("previewButton").addEventListener("click", () =>
     previewPrompt().catch((error) => setStatus(error.message, true))
@@ -812,7 +959,23 @@ function bind() {
   $("exportDeliveryAllButton").addEventListener("click", () =>
     exportDelivery().catch((error) => setStatus(error.message, true))
   );
+  $("deleteSelectedResultsButton").addEventListener("click", () =>
+    deleteSelectedResults().catch((error) => setStatus(error.message, true))
+  );
+  $("deleteActiveResultButton").addEventListener("click", () =>
+    deleteActiveResult().catch((error) => setStatus(error.message, true))
+  );
   $("printButton").addEventListener("click", () => window.print());
+  window.addEventListener("keydown", (event) => {
+    const target = event.target;
+    const tagName = target?.tagName?.toLowerCase?.() || "";
+    const isTypingTarget = ["input", "textarea", "select"].includes(tagName) || target?.isContentEditable;
+    if (event.key !== "Delete" || isTypingTarget) return;
+    if (document.activeElement?.closest?.("#resultRows")) {
+      event.preventDefault();
+      deleteSelectedResults().catch((error) => setStatus(error.message, true));
+    }
+  });
   window.addEventListener("beforeunload", (event) => {
     if (state.unsaved) {
       event.preventDefault();
