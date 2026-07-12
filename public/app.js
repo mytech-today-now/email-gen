@@ -4,6 +4,7 @@ const state = {
   modelSyncStatus: null,
   projects: [],
   activeProjectId: null,
+  projectApiAvailable: true,
   records: [],
   templates: [],
   addenda: [],
@@ -25,6 +26,10 @@ function setStatus(message, isError = false) {
   else console.info(message);
 }
 
+function logClientWarning(message, details = {}) {
+  console.warn(message, details);
+}
+
 async function api(path, options = {}) {
   const response = await fetch(path, {
     ...options,
@@ -35,14 +40,28 @@ async function api(path, options = {}) {
   });
   if (!response.ok) {
     const payload = await response.json().catch(() => null);
-    throw new Error(payload?.error?.message || `HTTP ${response.status}`);
+    const error = new Error(payload?.error?.message || `HTTP ${response.status}`);
+    error.status = response.status;
+    error.code = payload?.error?.code;
+    error.requestId = payload?.error?.requestId;
+    error.path = path;
+    console.error("API request failed", {
+      path,
+      status: response.status,
+      code: error.code,
+      requestId: error.requestId,
+      message: error.message
+    });
+    throw error;
   }
   const type = response.headers.get("content-type") || "";
   return type.includes("application/json") ? response.json() : response;
 }
 
 function projectQuery() {
-  return state.activeProjectId ? `projectId=${encodeURIComponent(state.activeProjectId)}` : "";
+  return state.projectApiAvailable && state.activeProjectId
+    ? `projectId=${encodeURIComponent(state.activeProjectId)}`
+    : "";
 }
 
 function withProject(path) {
@@ -183,6 +202,37 @@ function renderProjects() {
     (project) => `${project.name} (${project.recordCount})`
   );
   if (state.activeProjectId) $("projectSelect").value = state.activeProjectId;
+}
+
+function legacyProjectFromCounts(recordCount = state.records.length) {
+  return {
+    id: "legacy_current",
+    name: "Current Data",
+    datasetName: "Current Data",
+    promptName: $("templateSelect")?.value || "restaurant-ai-sms.txt",
+    sourceName: "legacy API",
+    recordCount,
+    createdAt: "",
+    updatedAt: ""
+  };
+}
+
+async function loadProjects({ fallbackRecordCount } = {}) {
+  try {
+    const payload = await api("/api/projects");
+    state.projectApiAvailable = true;
+    return payload;
+  } catch (error) {
+    if (error.status !== 404 && error.code !== "ROUTE_NOT_FOUND") throw error;
+    state.projectApiAvailable = false;
+    const project = legacyProjectFromCounts(fallbackRecordCount);
+    logClientWarning("Project API unavailable; using current-data fallback.", {
+      status: error.status,
+      code: error.code,
+      requestId: error.requestId
+    });
+    return { projects: [project], activeProject: project, legacyMode: true };
+  }
 }
 
 function syncRecordSelect() {
@@ -407,7 +457,7 @@ function renderModelCatalog() {
 }
 
 async function refreshAll() {
-  const projects = await api("/api/projects");
+  const projects = await loadProjects();
   state.projects = projects.projects;
   state.activeProjectId =
     state.activeProjectId || projects.activeProject?.id || state.projects[0]?.id || null;
@@ -426,7 +476,7 @@ async function refreshAll() {
   state.results = results.results;
   state.modelCatalog = modelCatalog.models;
   state.modelSyncStatus = modelCatalog.status;
-  if (records.project?.id) state.activeProjectId = records.project.id;
+  if (state.projectApiAvailable && records.project?.id) state.activeProjectId = records.project.id;
   if (!state.activeRecordId && state.records[0]) state.activeRecordId = state.records[0].id;
   if (!state.results.some((result) => result.id === state.activeResultId)) {
     state.activeResultId = state.results[0]?.id || null;
@@ -501,7 +551,7 @@ async function importFile(file) {
 }
 
 async function refreshProjects(activeProjectId = state.activeProjectId) {
-  const payload = await api("/api/projects");
+  const payload = await loadProjects({ fallbackRecordCount: state.records.length });
   state.projects = payload.projects;
   state.activeProjectId = activeProjectId || payload.activeProject?.id || state.projects[0]?.id || null;
   renderProjects();
@@ -513,7 +563,7 @@ async function previewPrompt() {
   const payload = await api("/api/templates/preview", {
     method: "POST",
     body: JSON.stringify({
-      projectId: state.activeProjectId,
+      projectId: state.projectApiAvailable ? state.activeProjectId : undefined,
       templateName: $("templateSelect").value,
       recordId: record.id
     })
@@ -531,7 +581,7 @@ async function createJob(mode) {
   const record = activeRecord();
   const body = {
     mode,
-    projectId: state.activeProjectId,
+    projectId: state.projectApiAvailable ? state.activeProjectId : undefined,
     recordId: record?.id,
     recordIds: selectedRecordIds(),
     startId: Number($("rangeStart").value || 0) || undefined,
@@ -642,7 +692,7 @@ async function exportDeliverySelected() {
 async function exportDelivery(resultIds = []) {
   const body = {
     profile: $("deliveryProfileSelect").value,
-    projectId: state.activeProjectId,
+    projectId: state.projectApiAvailable ? state.activeProjectId : undefined,
     resultIds
   };
   const payload = await api("/api/results/delivery-export", {
@@ -751,7 +801,7 @@ function bind() {
   $("exportAllButton").addEventListener("click", () =>
     api("/api/results/export", {
       method: "POST",
-      body: JSON.stringify({ projectId: state.activeProjectId })
+      body: JSON.stringify({ projectId: state.projectApiAvailable ? state.activeProjectId : undefined })
     })
       .then((payload) => setStatus(`Exported ${payload.export.filename}`))
       .catch((error) => setStatus(error.message, true))

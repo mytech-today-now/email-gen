@@ -36,6 +36,27 @@ test("renders expanded provider and model catalog", async ({ page }) => {
   await expect(modelSelect.locator('option[value="mock-structured-v1"]')).toHaveText("Mock Structured v1");
 });
 
+test("falls back gracefully when the project API is unavailable", async ({ page }) => {
+  await page.route("**/api/projects", (route) =>
+    route.fulfill({
+      status: 404,
+      contentType: "application/json",
+      body: JSON.stringify({
+        error: { code: "ROUTE_NOT_FOUND", message: "Route not found.", requestId: "req_test" }
+      })
+    })
+  );
+
+  await page.goto("/");
+  await expect(page.getByTestId("project-select")).toHaveValue("legacy_current");
+  await expect(page.getByTestId("project-select")).toContainText("Current Data");
+  await expect(page.getByTestId("status-line")).toContainText(/records|results/);
+
+  await page.getByTestId("load-sample").click();
+  await expect(page.getByTestId("record-rows")).toContainText("Acadian Grille & Bar");
+  await expect(page.getByTestId("project-select")).toContainText("Current Data");
+});
+
 test("complete mock workflow", async ({ page, context }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.goto("/");
