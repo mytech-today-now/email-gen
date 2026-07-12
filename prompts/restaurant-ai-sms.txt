@@ -22,23 +22,17 @@ Required email style:
 - Include one concise proof-oriented line such as faster responses, fewer missed opportunities, better repeat visits, or less staff interruption.
 - Include a simple call to action for a quick demo or reply.
 - Do not mention scraping, imported data, prompts, automation internals, or unverifiable claims.
+- Do not include any signature, sender contact block, footer, branding footer, or repeated promotional link in the body. The application adds those consistently after generation.
 
-Greeting and signature:
+Greeting:
 - Open exactly with: Dear {{name|default:"Restaurant"}} Owner and the General Manager,
-- End with this signature exactly:
-Best Regards,
-
-Kyle Rode
-kyle@mytech.today
-(847) 767-4914
-Hospitality Technology Solutions
-
-- Add this link as the final line: https://mytech.today/tools/ai-sms.html
+- End the final body paragraph with a simple CTA sentence. Do not add a closing signature line.
 
 HTML requirements:
 - Return bodyHtml only as safe email HTML using simple <p>, <br>, and <a> tags.
-- Put the signature in the bodyHtml.
-- Link the final URL with an <a href="https://mytech.today/tools/ai-sms.html"> tag.
+- Put the greeting in its own opening paragraph.
+- Use separate paragraphs for the hook, value proposition, proof or operational impact, and CTA.
+- Do not include the AI SMS URL unless it is necessary inside the core message. The application appends the canonical link after the signature.
 - Do not include <html>, <head>, <body>, scripts, styles, images, tables, or markdown.
 
 Return only valid JSON:

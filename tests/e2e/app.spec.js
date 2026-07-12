@@ -95,6 +95,25 @@ test("complete mock workflow", async ({ page, context }) => {
   );
 });
 
+test("rendered email stays clean without duplicate promo links or duplicate signature blocks", async ({
+  page
+}) => {
+  await page.goto("/");
+  await page.getByTestId("load-sample").click();
+  await page.getByTestId("provider-select").selectOption("mock");
+  await page.locator("#researchEnabled").uncheck();
+  await page.getByTestId("process-current").click();
+  await expect(page.getByTestId("result-rows")).toContainText("completed", { timeout: 10000 });
+
+  const iframeHtml = await page
+    .locator("#emailPreview")
+    .evaluate((iframe) => iframe.getAttribute("srcdoc") || "");
+  expect((iframeHtml.match(/<a href="https:\/\/mytech\.today\/tools\/ai-sms\.html"/g) || []).length).toBe(1);
+  expect((iframeHtml.match(/Best Regards,/g) || []).length).toBe(1);
+  expect(iframeHtml).not.toContain("Personalized for");
+  expect(iframeHtml).not.toContain("myTech.Today · Omaha, Nebraska");
+});
+
 test("clicking a generated result row updates the editable selected result", async ({ page }) => {
   await page.goto("/");
   await page.getByTestId("load-sample").click();

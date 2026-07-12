@@ -1,5 +1,5 @@
 import sanitizeHtml from "sanitize-html";
-import { escapeHtml, normalizeWhitespace } from "../utils/helpers.js";
+import { escapeHtml } from "../utils/helpers.js";
 
 export function safeUrl(url) {
   try {
@@ -49,10 +49,21 @@ export function textToSafeHtml(text) {
 }
 
 export function htmlToPlainText(html) {
-  return normalizeWhitespace(
-    sanitizeHtml(String(html ?? "").replace(/<br\s*\/?>/gi, "\n").replace(/<\/p>/gi, "\n\n").replace(/<\/li>/gi, "\n"), {
+  return sanitizeHtml(
+    String(html ?? "")
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<\/p>/gi, "\n\n")
+      .replace(/<\/div>/gi, "\n\n")
+      .replace(/<\/li>/gi, "\n")
+      .replace(/<\/ul>/gi, "\n")
+      .replace(/<\/ol>/gi, "\n"),
+    {
       allowedTags: [],
       allowedAttributes: {}
-    })
-  ).replace(/\. /g, ".\n");
+    }
+  )
+    .replace(/\r/g, "")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }

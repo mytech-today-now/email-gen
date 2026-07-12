@@ -272,6 +272,8 @@ Place `.html`, `.txt`, or `.md` files in `addenda/`. HTML is sanitized for email
 
 Generated HTML is sanitized and uses conservative table markup with inline CSS. It cannot guarantee identical rendering in every email client, but it avoids script/event attributes, unsafe URLs, and app controls.
 
+The app owns the final sender presentation. AI-generated `bodyHtml` should contain only the actual message body. The renderer appends the configured signature and one canonical AI SMS URL consistently, and strips duplicate signature or footer remnants if a model includes them anyway.
+
 ## Persistence, Logs, Backup, Reset
 
 - Database: `storage/email-gen.sqlite` by default.
