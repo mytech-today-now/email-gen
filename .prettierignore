@@ -6,4 +6,6 @@ storage
 logs
 output
 .inspect
+.gitignore
+ai-prompts/*.txt
 tests/fixtures/malformed.json

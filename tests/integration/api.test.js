@@ -5,16 +5,47 @@ import { createTestHarness, waitForJob } from "../helpers/appTestHarness.js";
 
 let harness;
 let previousEnv;
-const providerEnvKeys = ["AI_MOCK", "ENABLED_AI_PROVIDERS", "CUSTOM_PROVIDER_BASE_URL", "OPENAI_API_KEY"];
+const providerEnvKeys = ["AI_MOCK", "ENABLED_AI_PROVIDERS", "CUSTOM_PROVIDER_BASE_URL"];
 const allProviders = "openai,anthropic,xai,venice,lumaai,custom,mock";
+const canonicalRestaurantFixture = JSON.stringify(
+  [
+    {
+      id: 176,
+      name: "712 Eat + Drink",
+      city: "Council Bluffs",
+      phone: "(712) 256-5525",
+      address: "1851 Madison Ave, Council Bluffs, IA 51503",
+      cuisine: "Contemporary American",
+      price: "$$$",
+      website: "http://sevenonetwocb.com/"
+    },
+    {
+      id: 177,
+      name: "Barley's Bar & Grill",
+      city: "Council Bluffs",
+      phone: "(712) 322-0306",
+      address: "114 W Broadway, Council Bluffs, IA 51503",
+      cuisine: "American Pub",
+      price: "$$",
+      website: "https://www.barleysbar.com/"
+    }
+  ],
+  null,
+  2
+);
+const malformedRestaurantFixture = `{
+  "records": [
+    { "id": 176, "name": "712 Eat + Drink", }
+  ]
+}`;
 
 beforeEach(() => {
   previousEnv = Object.fromEntries(providerEnvKeys.map((key) => [key, process.env[key]]));
   process.env.AI_MOCK = "true";
   process.env.ENABLED_AI_PROVIDERS = allProviders;
   process.env.CUSTOM_PROVIDER_BASE_URL = "http://127.0.0.1:9999/v1";
-  process.env.OPENAI_API_KEY = "sk-test-secret";
   harness = createTestHarness();
+  harness.context.runtimeCredentials.set("openai", "sk-test-secret");
 });
 
 afterEach(() => {
@@ -49,6 +80,10 @@ describe("API integration", () => {
     );
     expect(providers.find((provider) => provider.id === "lumaai").models[0].capabilities).toEqual(["video"]);
     expect(JSON.stringify(response.body)).not.toContain("sk-test-secret");
+    expect(providers.find((provider) => provider.id === "openai")).toMatchObject({
+      hasCredential: true,
+      credentialStatus: "configured"
+    });
   });
 
   it("does not report missing browser sidecar routes as server errors", async () => {
@@ -58,12 +93,37 @@ describe("API integration", () => {
     expect(missing.body.error.code).toBe("ROUTE_NOT_FOUND");
   });
 
+  it("serves the raw HTML highlighting assets from the local app bundle", async () => {
+    const script = await harness.request.get("/vendor/highlight-html.js").expect(200);
+    expect(script.headers["content-type"]).toMatch(/javascript/);
+    expect(script.text).toContain('hljs.registerLanguage("xml"');
+    expect(script.text).toContain("globalThis.hljs = hljs");
+
+    const stylesheet = await harness.request.get("/vendor/highlight-github-dark.css").expect(200);
+    expect(stylesheet.headers["content-type"]).toMatch(/css/);
+    expect(stylesheet.text).toContain(".hljs");
+  });
+
   it("returns a safe validation error for malformed imports", async () => {
     const response = await harness.request
       .post("/api/records/import")
       .attach("file", Buffer.from('id,name\n1,"unterminated'), "bad.csv")
       .expect(400);
     expect(response.body.error.code).toBe("IMPORT_PARSE_FAILED");
+  });
+
+  it("rejects malformed JSON restaurant fragments with line and column details", async () => {
+    const response = await harness.request
+      .post("/api/records/import")
+      .attach("file", Buffer.from(malformedRestaurantFixture), "restaurants.json")
+      .expect(400);
+
+    expect(response.body.error.code).toBe("IMPORT_JSON_INVALID");
+    expect(response.body.error.message).toMatch(/line/i);
+    expect(response.body.error.details).toMatchObject({
+      line: expect.any(Number),
+      column: expect.any(Number)
+    });
   });
 
   it("loads sample data, previews a template, and processes one record with mock provider", async () => {
@@ -216,6 +276,53 @@ describe("API integration", () => {
     expect(afterBulkDelete.body.results).toHaveLength(1);
   });
 
+  it("does not log deleted result subjects to the server logger", async () => {
+    const logs = [];
+    const logger = Object.fromEntries(
+      ["debug", "info", "warn", "error", "fatal"].map((level) => [
+        level,
+        (payload, message) => logs.push({ level, payload, message })
+      ])
+    );
+    const localHarness = createTestHarness({ logger });
+
+    try {
+      localHarness.context.runtimeCredentials.set("openai", "sk-test-secret");
+      const sample = await localHarness.request.post("/api/records/load-sample").send({}).expect(200);
+      const projectId = sample.body.project.id;
+
+      const jobResponse = await localHarness.request
+        .post("/api/jobs")
+        .send({
+          projectId,
+          mode: "all",
+          templateName: "restaurant-ai-sms.txt",
+          provider: "mock",
+          model: "mock-structured-v1",
+          researchEnabled: false,
+          concurrency: 1,
+          delayMs: 0
+        })
+        .expect(202);
+      await waitForJob(localHarness.request, jobResponse.body.job.id);
+
+      const beforeDelete = await localHarness.request.get(`/api/results?projectId=${projectId}`).expect(200);
+      await localHarness.request
+        .delete(`/api/results/${beforeDelete.body.results[0].id}?projectId=${projectId}`)
+        .expect(200);
+
+      const deleteLog = logs.find((entry) => entry.message === "Result deleted");
+      expect(deleteLog).toBeTruthy();
+      expect(deleteLog.payload).toMatchObject({
+        resultId: beforeDelete.body.results[0].id,
+        projectId
+      });
+      expect(deleteLog.payload).not.toHaveProperty("subject");
+    } finally {
+      localHarness.cleanup();
+    }
+  });
+
   it("exports completed emails as a delivery kit for sending systems", async () => {
     const sample = await harness.request.post("/api/records/load-sample").send({}).expect(200);
     const jobResponse = await harness.request
@@ -244,5 +351,55 @@ describe("API integration", () => {
     );
 
     await harness.request.get(`/api/results/export-file/${response.body.export.filename}`).expect(200);
+  });
+
+  it("processes the canonical restaurant fixture without missing-value artifacts and includes phone and website actions", async () => {
+    const imported = await harness.request
+      .post("/api/records/import")
+      .attach("file", Buffer.from(canonicalRestaurantFixture), "restaurants.json")
+      .expect(200);
+
+    expect(imported.body.records).toHaveLength(2);
+
+    const projectId = imported.body.project.id;
+    const jobResponse = await harness.request
+      .post("/api/jobs")
+      .send({
+        projectId,
+        mode: "all",
+        templateName: "restaurant-ai-sms.txt",
+        provider: "mock",
+        model: "mock-structured-v1",
+        researchEnabled: false,
+        concurrency: 1,
+        delayMs: 0
+      })
+      .expect(202);
+    const job = await waitForJob(harness.request, jobResponse.body.job.id);
+    expect(job.counts.completed).toBe(2);
+    expect(job.counts.failed).toBe(0);
+
+    const records = (await harness.request.get(`/api/records?projectId=${projectId}`).expect(200)).body
+      .records;
+    const results = (await harness.request.get(`/api/results?projectId=${projectId}`).expect(200)).body
+      .results;
+    expect(results).toHaveLength(2);
+
+    const recordById = new Map(records.map((record) => [record.id, record]));
+    for (const result of results) {
+      const record = recordById.get(result.recordId);
+      expect(result.subject.trim().length).toBeGreaterThan(0);
+      expect(result.bodyHtml.trim().length).toBeGreaterThan(0);
+      expect(result.emailHtml.trim().length).toBeGreaterThan(0);
+      expect(result.emailHtml).not.toMatch(/undefined|null|NaN|\[object Object\]|{{/);
+
+      const html = await harness.request.get(`/api/results/${result.id}/document`).expect(200);
+      expect(html.text).toContain("<!doctype html>");
+      expect(html.text).toContain(`href="tel:${record.normalized.phone.replace(/[^\d]/g, "")}"`);
+      expect(html.text).toContain(record.normalized.phone);
+      expect(html.text).toContain(`href="${record.normalized.website}"`);
+      expect(html.text).not.toContain("No contact method found");
+      expect(html.text).not.toMatch(/undefined|null|NaN|\[object Object\]|{{/);
+    }
   });
 });

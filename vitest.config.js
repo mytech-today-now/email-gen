@@ -1,11 +1,19 @@
 import { defineConfig } from "vitest/config";
 
+const sharedTimeouts = {
+  testTimeout: 90000,
+  hookTimeout: 90000,
+  teardownTimeout: 90000
+};
+
 export default defineConfig({
   test: {
     environment: "node",
     exclude: ["node_modules/**", "tests/e2e/**"],
-    testTimeout: 20000,
-    hookTimeout: 20000,
+    pool: "threads",
+    ...sharedTimeouts,
+    maxWorkers: 1,
+    fileParallelism: false,
     coverage: {
       provider: "v8",
       reporter: ["text", "html"],

@@ -1,4 +1,5 @@
 import { makeId, nowIso, parseJson } from "../../utils/helpers.js";
+import { applyBatchMetadata } from "../../ai/modelCatalog/batchMetadata.js";
 
 function json(value, fallback) {
   return JSON.stringify(value ?? fallback);
@@ -14,7 +15,7 @@ function modelId(providerId, providerModelId) {
 
 function mapRow(row) {
   if (!row) return null;
-  return {
+  return applyBatchMetadata({
     id: row.id,
     providerId: row.provider_id,
     providerModelId: row.provider_model_id,
@@ -48,7 +49,7 @@ function mapRow(row) {
     exclusionReason: row.exclusion_reason,
     schemaVersion: row.schema_version,
     updatedAt: row.updated_at
-  };
+  });
 }
 
 function mapStatus(row) {

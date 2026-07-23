@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { AppError } from "../utils/errors.js";
+import { AppError, createShutdownError } from "../utils/errors.js";
 import { truncateBytes } from "../utils/helpers.js";
 import { renderTemplate } from "../templates/renderer.js";
 import { collectResearch } from "../research/researchService.js";
@@ -15,11 +15,17 @@ const StructuredEmailSchema = z.object({
   bodyHtml: z.string().min(1)
 });
 
+const USABLE_RESEARCH_STATUSES = new Set(["ok", "degraded", "partial"]);
+
 function researchPromptSection(research) {
-  if (!research || research.status !== "ok") {
+  if (!research || !USABLE_RESEARCH_STATUSES.has(research.status)) {
     return "\n\nWebsite research: unavailable or disabled. Do not claim research was completed.";
   }
-  return `\n\nWebsite research from ${research.url}:\nTitle: ${research.title || "Untitled"}\nExcerpt: ${research.excerpt || research.content}`;
+  const partialNote =
+    research.status === "ok"
+      ? ""
+      : "\nNote: website research was only partially successful and some contact-page checks failed.";
+  return `${partialNote}\n\nWebsite research from ${research.url}:\nTitle: ${research.title || "Untitled"}\nExcerpt: ${research.excerpt || research.content}`;
 }
 
 function finalInstructionSection(config) {
@@ -42,15 +48,32 @@ export async function processRecord({
   researchEnabled,
   config,
   providerRegistry,
+  runtimeCredentials,
   cacheRepository,
   browserLauncher,
-  logger
+  logger,
+  signal = null
 }) {
+  if (signal?.aborted) {
+    throw signal.reason instanceof Error ? signal.reason : createShutdownError();
+  }
+  const logContext = {
+    recordId: record.id,
+    recordName: record.displayName,
+    provider,
+    model,
+    sourceRow: record.sourceRow
+  };
+  logger?.info({ ...logContext, stage: "template-interpolation" }, "Record processing started");
   const validated = providerRegistry.validate(provider, model);
   const { rendered, analysis } = renderTemplate(template.content, record.normalized, {
     blockOnMissing: true
   });
   if (!analysis.canProcess) {
+    logger?.warn(
+      { ...logContext, stage: "template-interpolation", missing: analysis.missing, blank: analysis.blank },
+      "Record blocked by missing template variables"
+    );
     throw new AppError(
       "TEMPLATE_VARIABLE_MISSING",
       "Required template variables are missing.",
@@ -64,33 +87,48 @@ export async function processRecord({
     cacheRepository,
     browserLauncher,
     logger,
-    enabled: researchEnabled
+    enabled: researchEnabled,
+    signal
   });
+  logger?.info(
+    { ...logContext, stage: "research", researchStatus: research.status },
+    "Record research completed"
+  );
   const addendum = renderAddendum(addendumName ? loadAddendum(config, addendumName) : null);
   const prompt = truncateBytes(
     `${rendered}${researchPromptSection(research)}${finalInstructionSection(config)}`,
     config.limits.promptBytes
   );
 
-  const client = await createAiPoweredClient({ provider, model, config });
+  const client = await createAiPoweredClient({ provider, model, config, runtimeCredentials });
   let normalized;
   let rawAi;
   try {
+    logger?.info({ ...logContext, stage: "provider-request" }, "Provider request started");
     const result = await client.generateStructured(prompt, StructuredEmailSchema, {
       maxTokens: config.ai.maxTokens,
-      temperature: config.ai.temperature
+      temperature: config.ai.temperature,
+      signal
     });
     rawAi = JSON.stringify(result.data);
     normalized = normalizeAiResponse(result.data);
+    logger?.info(
+      { ...logContext, stage: "response-parse", subjectLength: normalized.subject.length },
+      "Provider response parsed"
+    );
     if ((provider === "mock" || process.env.AI_MOCK === "true") && normalized.subject === "mock-string") {
       normalized = mockEmail(record);
       rawAi = JSON.stringify(normalized);
     }
   } catch (error) {
+    if (signal?.aborted) {
+      throw signal.reason instanceof Error ? signal.reason : createShutdownError();
+    }
     if (provider === "mock" || process.env.AI_MOCK === "true") {
       normalized = mockEmail(record);
       rawAi = JSON.stringify(normalized);
     } else {
+      logger?.warn({ ...logContext, stage: "provider-request", err: error }, "Provider request failed");
       throw normalizeProviderError(error, validated.provider);
     }
   }
@@ -102,6 +140,7 @@ export async function processRecord({
     record,
     config
   });
+  logger?.info({ ...logContext, stage: "html-rendering" }, "Record HTML rendered");
   const bodyText = renderPlainText({
     subject: normalized.subject,
     bodyHtml: normalized.bodyHtml,

@@ -8,15 +8,14 @@ describe("provider error normalization", () => {
 
     const normalized = normalizeProviderError(error, {
       id: "xai",
-      label: "xAI Grok",
-      apiKeyEnv: "XAI_API_KEY"
+      label: "xAI Grok"
     });
 
     expect(normalized).toMatchObject({
       code: "PROVIDER_AUTH_FAILED",
       status: 502
     });
-    expect(normalized.message).toContain("XAI_API_KEY");
+    expect(normalized.message).toContain("Configuration");
   });
 
   it("leaves non-auth provider failures untouched", () => {

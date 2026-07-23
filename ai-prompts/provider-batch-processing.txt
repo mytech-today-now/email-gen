@@ -1,0 +1,820 @@
+ARCHIVED PROMPT: historical implementation brief only.
+Use the current repository docs and source code as the authoritative description of runtime credentials, browser storage, CI, and provider behavior.
+
+# Role
+
+You are a principal software architect, senior full-stack engineer, AI-provider integration specialist, pricing-data analyst, QA automation engineer, and technical writer. You are highly experienced with asynchronous batch APIs, provider capability abstraction, resilient job processing, observability, secure credential handling, and production-grade testing.
+
+# Primary Objective
+
+Inspect and refactor the **AI Batch Personalizer** application in the following repository:
+
+https://github.com/mytech-today-now/email-gen
+
+Implement native, discounted batch-processing support for every AI provider and model already supported by the application when that provider officially offers an eligible batch-processing API or pricing program.
+
+Do not stop after producing recommendations or a plan. Research the supported providers, document the plan, implement the functionality, update the user interface and pricing information, add comprehensive tests, update documentation and version history, and verify the completed application.
+
+# Important Definition
+
+For this project, **provider batch processing** means an officially documented provider-side batch API or service that:
+
+- Accepts multiple asynchronous inference requests as a batch or batch job.
+- Provides discounted pricing, distinct batch pricing, or another officially documented economic benefit.
+- Has provider-defined submission, validation, processing, result-retrieval, expiration, and cancellation behavior.
+
+Do not misrepresent any of the following as discounted provider batch processing unless the provider explicitly documents it that way:
+
+- Sending multiple normal API requests concurrently.
+- Client-side request grouping.
+- Promise pools, worker queues, or parallel processing.
+- HTTP connection reuse.
+- Bulk application logic using standard synchronous endpoints.
+- A provider endpoint that supports multiple inputs but has no documented batch pricing benefit.
+
+These techniques may still be useful as implementation details or fallbacks, but they must be labeled accurately.
+
+# Core Requirements
+
+## 1. Inspect and Establish the Existing Baseline
+
+Before modifying code:
+
+1. Inspect the complete repository, including:
+   - README and other documentation.
+   - Source files and application architecture.
+   - Provider adapters and API clients.
+   - Model catalogs and pricing data.
+   - Configuration and environment-variable handling.
+   - User-interface components.
+   - Batch-personalization workflow.
+   - Data persistence and job-state handling.
+   - Logging and error-handling code.
+   - Package manifests, lockfiles, build scripts, linting configuration, and test configuration.
+   - Unit, integration, regression, and end-to-end tests.
+   - Version files and CHANGELOG files.
+   - Repository-specific instructions such as `AGENTS.md`, contribution guidelines, or equivalent files.
+
+2. Identify every AI provider and model the application currently supports from authoritative application code and configuration. Do not assume that a provider is supported merely because it is mentioned in documentation.
+
+3. Run the existing installation, build, lint, type-check, and test commands to establish a baseline.
+
+4. Record any pre-existing failures separately. Do not attribute pre-existing defects to the new implementation.
+
+5. Preserve existing behavior, user data, configuration compatibility, and non-batch workflows unless a change is necessary and clearly documented.
+
+## 2. Research Every Supported Provider
+
+Research the current official documentation for every AI provider already supported by the application, including OpenAI and xAI if they are present.
+
+Use primary sources whenever possible:
+
+- Official API documentation.
+- Official pricing pages.
+- Official SDK documentation.
+- Official model catalogs.
+- Official release notes or provider announcements.
+
+For each supported provider, determine:
+
+- Whether a native batch API currently exists.
+- Whether batch processing is discounted.
+- The exact eligible models.
+- Batch input-token pricing.
+- Batch output-token pricing.
+- Cached-input, cache-write, reasoning-token, image, audio, or other applicable batch pricing.
+- Currency and pricing unit.
+- Discount percentage or documented pricing difference.
+- API endpoint, SDK method, and required API version.
+- Request and file formats.
+- Maximum requests per batch.
+- File-size, token, payload, or enqueued-token limits.
+- Completion window or service-level expectation.
+- Rate limits and batch-specific quotas.
+- Job lifecycle and status values.
+- Validation behavior.
+- Result ordering and request-correlation mechanism.
+- Partial-failure behavior.
+- Cancellation support.
+- Expiration and result-retention behavior.
+- Regional, account-tier, or access restrictions.
+- Any provider-specific security or data-retention implications.
+
+Create a provider capability matrix that classifies each provider/model combination as one of the following:
+
+- `native_discounted_batch`
+- `native_batch_no_verified_discount`
+- `standard_api_only`
+- `unavailable_or_unverified`
+
+For unavailable or ambiguous functionality, say so explicitly. Never invent an endpoint, model, discount, price, limit, or capability.
+
+Every documented price or capability must include:
+
+- The official source URL.
+- The date it was verified.
+- Any relevant qualification or restriction.
+
+If live research is unavailable, do not present remembered pricing as current. Mark the affected information as unverified, disable unsupported production behavior, and document the blocker.
+
+## 3. Produce and Implement a Batch-Processing Plan
+
+Create a repository document such as `docs/batch-processing-plan.md` containing:
+
+- The current provider inventory.
+- The provider capability matrix.
+- Current architecture findings.
+- Proposed architecture.
+- Provider-specific implementation details.
+- Data-model changes.
+- Job-state transitions.
+- Pricing-display changes.
+- Logging and security strategy.
+- Error and fallback behavior.
+- Testing strategy.
+- Migration and backward-compatibility considerations.
+- Official documentation sources.
+- Known limitations and future work.
+
+After documenting the plan, implement it. Do not provide a plan-only result.
+
+## 4. Add a Provider Capability Abstraction
+
+Extend the application’s existing provider abstraction rather than scattering provider-specific conditionals throughout unrelated code.
+
+Use names and interfaces appropriate to the repository’s language and conventions. The abstraction should support capabilities equivalent to:
+
+- Determining whether a provider/model supports native batch processing.
+- Retrieving batch limits and pricing metadata.
+- Validating a proposed batch before submission.
+- Creating a batch job.
+- Retrieving batch status.
+- Retrieving and reconciling results.
+- Cancelling a batch where supported.
+- Resuming monitoring after an application restart.
+- Reporting normalized provider errors.
+- Falling back to standard processing under an explicit policy.
+
+Support execution modes equivalent to:
+
+- `auto`: Prefer an eligible discounted native
+# Role
+
+You are a principal software architect, senior full-stack engineer, AI-provider integration specialist, pricing-data analyst, QA engineer, and technical writer. You specialize in asynchronous AI batch APIs, resilient distributed workflows, provider abstraction layers, production logging, error recovery, pricing normalization, and automated testing.
+
+# Repository
+
+Refactor and enhance the **AI Batch Personalizer** application:
+
+https://github.com/mytech-today-now/email-gen
+
+Work against the repository’s current default branch unless another branch or version is explicitly provided.
+
+# Primary Objective
+
+Implement production-ready support for the discounted batch-processing services offered by the AI providers already supported by the application.
+
+Some providers, including OpenAI and xAI, may offer discounted processing when requests are submitted through a provider-specific asynchronous batch API. Research every AI provider currently supported by the application, determine its verified batch-processing capabilities, and implement the appropriate behavior without inventing unsupported features, models, prices, discounts, or API behavior.
+
+Do not stop after producing a plan. Complete the research, document the plan, implement the changes, add tests, update documentation, and verify the application.
+
+Think through the architecture and implementation carefully before making changes. Keep private reasoning internal; provide decisions, evidence, assumptions, and results rather than private chain-of-thought.
+
+# Required Work
+
+## 1. Inspect and Establish the Existing Baseline
+
+Before modifying code:
+
+1. Inspect the complete repository, including:
+   - `README` and other documentation
+   - source code
+   - provider adapters and API clients
+   - provider, model, and pricing configuration
+   - user interfaces
+   - batch-personalization workflows
+   - persistence and state-management code
+   - environment-variable handling
+   - logging and error-handling code
+   - package and dependency files
+   - build scripts
+   - tests, fixtures, and CI configuration
+   - version and changelog files
+   - repository-specific instruction files such as `AGENTS.md`
+2. Identify every AI provider the application actually supports. Treat the source code and configuration—not assumptions—as authoritative.
+3. Identify the currently supported models and how pricing information is stored, displayed, and updated.
+4. Determine whether “batch” currently means:
+   - local iteration over multiple records,
+   - concurrent standard API requests,
+   - a provider’s official asynchronous batch service, or
+   - some combination of these.
+5. Run the existing build, linting, type checking, and tests before changing anything. Record any pre-existing failures separately.
+6. Preserve existing functionality and user-created data. Do not overwrite unrelated changes or perform unrelated refactoring.
+
+## 2. Research Every Supported Provider
+
+Research every provider discovered in the repository using current, official, primary-source documentation. Prefer provider API references, official pricing pages, official SDK documentation, and official release notes.
+
+For each provider, verify and document:
+
+- Whether an official batch API exists
+- Whether the batch service currently offers a monetary discount
+- Whether it is generally available, preview, beta, or restricted
+- Eligible models
+- Ineligible models
+- API endpoints, SDK methods, and required API versions
+- Request and file formats
+- Maximum requests per batch
+- File-size, payload-size, and token limits
+- Completion window or expected processing period
+- Rate limits and separate batch-queue limits
+- Required identifiers, such as custom request IDs
+- Job lifecycle and status values
+- Polling, cancellation, expiration, and result-retrieval behavior
+- Input and output pricing
+- Cached-input, cache-write, reasoning-token, image, audio, or other special pricing where applicable
+- Whether the batch discount applies equally to input and output tokens
+- Data-retention or uploaded-file cleanup considerations
+- Regional, account-tier, or model-access limitations
+- The official source URL and the date each fact was verified
+
+Classify each provider into one of these categories:
+
+1. **Native discounted batch:** An official provider-side batch service with a verified discount
+2. **Native batch without verified discount:** An official batch mechanism exists, but no current discount can be verified
+3. **No native batch:** Only standard synchronous, streaming, or concurrent requests are supported
+4. **Unavailable or unverified:** Documentation is missing, ambiguous, inaccessible, or inconsistent
+
+Do not confuse client-side concurrency, bulk loops, multiple-prompt endpoints, or request aggregation with a provider’s official discounted batch service.
+
+If a provider’s batch capability or pricing cannot be verified through official documentation, mark it as unverified and leave production batch submission disabled for that provider.
+
+Create a provider capability and pricing matrix in the project documentation.
+
+## 3. Create a Provider-Neutral Batch Architecture
+
+Implement a provider-neutral abstraction that supports provider-specific behavior without scattering conditional logic throughout the application.
+
+Adapt the design to the repository’s language and architecture, but ensure it can represent operations equivalent to:
+
+- Discover batch capabilities
+- Validate model eligibility
+- Validate and normalize batch requests
+- Estimate standard and batch costs
+- Split oversized workloads into valid provider batches
+- Submit a batch
+- Persist the provider job identifier
+- Retrieve batch status
+- Poll safely
+- Cancel a batch when supported
+- Retrieve and normalize results
+- Reconcile results with original records
+- Retry only eligible failed items
+- Resume interrupted jobs
+- Clean up temporary provider files when appropriate
+
+Support these execution modes:
+
+- **Automatic:** Use native discounted batch processing when verified and eligible; otherwise use the standard processing path with a clear notice
+- **Provider batch:** Require the provider’s native batch service and fail validation before submission if it is unavailable or ineligible
+- **Standard:** Use the existing non-batch API path
+- **Dry run or estimate:** Validate the workload and estimate cost without submitting paid API requests
+
+Do not describe standard concurrent processing as discounted batch processing.
+
+## 4. Implement a Durable Batch Job Lifecycle
+
+Use an explicit, normalized lifecycle capable of representing states such as:
+
+- Draft
+- Validating
+- Queued
+- Submitted
+- In progress
+- Finalizing
+- Completed
+- Partially completed
+- Failed
+- Cancelling
+- Cancelled
+- Expired
+
+Provider-specific states must be mapped into normalized application states without losing the original provider status.
+
+Persist enough information to safely resume after an application restart, browser refresh, worker restart, network interruption, or polling timeout. Persist, as appropriate:
+
+- Internal batch ID
+- Provider batch ID
+- Provider and model
+- Requested execution mode
+- Actual execution mode
+- Original record identifiers
+- Provider custom request identifiers
+- Batch chunks
+- Submission timestamps
+- Current status
+- Progress counts
+- Retry counts
+- Completed results
+- Per-record errors
+- Usage and cost data
+- Configuration needed for safe reconciliation
+- Schema or record version
+
+Use deterministic, collision-resistant request identifiers so out-of-order provider results can be mapped back to the correct email or personalization record.
+
+Ensure that:
+
+- Results remain associated with the correct original record even when returned out of order
+- Completed records are not resubmitted unnecessarily
+- Duplicate submissions are prevented
+- Partial failures do not discard successful results
+- Failed items can be retried independently
+- Job cancellation is idempotent
+- Unknown provider statuses are preserved, logged, and handled safely
+- A restart does not cause duplicate billable requests
+
+## 5. Implement Safe Chunking and Validation
+
+Before submission, validate:
+
+- Provider batch availability
+- Model eligibility
+- Account or API-version requirements when discoverable
+- Record count
+- Payload size
+- File size
+- Per-request token or context limits
+- Total queued-token limits where applicable
+- Required fields
+- Unique request identifiers
+- Supported endpoints
+- Unsupported media or message types
+
+Split workloads according to verified provider limits. Chunking must be deterministic and must not lose, duplicate, or reorder source records.
+
+Reject invalid batches before submitting them. Return actionable validation messages identifying the affected records and the relevant provider limitation.
+
+## 6. Update the Provider / Model / Price List
+
+Update the application’s Provider/Model/Price list and its underlying data model to include batch-specific information.
+
+Represent, where applicable:
+
+- Provider
+- Model
+- Model identifier
+- Standard input-token price
+- Standard output-token price
+- Cached-input or cache-write pricing
+- Batch input-token price
+- Batch output-token price
+- Batch cached-input pricing
+- Verified discount percentage
+- Batch eligibility
+- Batch service availability
+- Important batch limitations
+- Currency
+- Normalized pricing unit, preferably per one million tokens
+- Effective or verified date
+- Official pricing source
+- Pricing-data status, such as verified, unavailable, or unverified
+
+Do not collapse materially different input and output prices into a single misleading price.
+
+For providers or models without verified discounted batch support, display a clear value such as:
+
+- `Not supported`
+- `No verified discount`
+- `Not eligible`
+- `Pricing unavailable`
+
+Never display invented zero-dollar prices or infer discounts from marketing claims.
+
+The price list must clearly distinguish:
+
+- Standard API pricing
+- Native batch pricing
+- The calculated savings
+- Estimated cost
+- Actual provider-reported cost, when available
+
+Store pricing and capability metadata in a maintainable configuration or data layer rather than duplicating constants across the application. Follow any existing project pattern for remote pricing updates or static versioned pricing. Include source attribution and a verification date so future maintainers can identify stale data.
+
+## 7. Add Cost Estimation and Reconciliation
+
+Before submission, provide an estimate that includes:
+
+- Estimated input tokens
+- Estimated output tokens or an explicitly stated output assumption
+- Standard-processing cost
+- Native batch cost
+- Estimated savings
+- Number of provider batches or chunks
+- Models and pricing records used
+- Pricing verification date
+- A warning that actual billing may differ from estimates
+
+After completion, display actual usage and cost when the provider returns sufficient usage data. Otherwise, label calculated totals as estimates.
+
+Use precise arithmetic suitable for currency calculations. Avoid floating-point rounding errors in aggregate totals.
+
+## 8. Add User-Facing Batch Controls and Status
+
+Integrate batch processing into the existing interface without disrupting the current workflow.
+
+Where consistent with the current application, provide:
+
+- Execution-mode selection
+- Provider and model selection
+- Eligibility indicators
+- Standard versus batch pricing
+- Preflight validation
+- Cost and savings estimates
+- Submission confirmation
+- Batch ID
+- Current status
+- Submitted, completed, failed, and remaining counts
+- Progress updates
+- Partial-failure details
+- Retry-failed-items action
+- Cancel action when supported
+- Resume or refresh-status action
+- Results export or download
+- Clear warnings when automatic mode falls back to standard processing
+
+Do not silently switch from an explicitly requested native batch operation to standard, potentially more expensive processing.
+
+If automatic fallback is enabled, show and log:
+
+- Why fallback occurred
+- Whether submission had already been accepted
+- The pricing impact
+- The execution mode ultimately used
+
+## 9. Implement Comprehensive Logging
+
+Add structured, configurable logging to both:
+
+1. The console
+2. An external log file
+
+Log records should include, where appropriate:
+
+- ISO 8601 timestamp
+- Severity
+- Event name
+- Component
+- Internal correlation ID
+- Internal batch ID
+- Provider batch ID
+- Provider
+- Model
+- Execution mode
+- Normalized status
+- Original provider status
+- Record counts
+- Chunk number
+- Duration
+- Poll attempt
+- Retry count
+- HTTP status category
+- Rate-limit information
+- Token usage
+- Estimated or actual cost
+- Error code
+- Safe error summary
+
+Use readable console logs and structured JSON or JSON Lines for file logs unless the application already has a stronger established format.
+
+Implement:
+
+- Configurable log levels
+- Configurable log location
+- Log rotation or bounded retention
+- Safe handling of file-write failures
+- Correlation across submission, polling, retrieval, and retry operations
+- Clear startup logging showing enabled providers and batch capabilities
+
+Never log:
+
+- API keys
+- Authentication headers
+- Access tokens
+- Complete prompt bodies by default
+- Full email bodies by default
+- Recipient personal information unless explicitly enabled for debugging
+- Unredacted provider responses containing sensitive content
+
+Add centralized redaction and test it.
+
+If the application runs entirely in a browser and cannot securely write an arbitrary external file, implement a persistent bounded log buffer plus a user-controlled JSONL log export/download. Document the browser limitation clearly. Do not add an insecure filesystem workaround.
+
+## 10. Implement Graceful Error Handling and Fallback
+
+Create a consistent error model that distinguishes:
+
+- Validation errors
+- Authentication and authorization errors
+- Missing model access
+- Unsupported batch operations
+- Rate limits
+- Quota or billing failures
+- Network timeouts
+- Transient provider errors
+- Permanent provider errors
+- Malformed provider responses
+- Partial-result failures
+- Cancellation and expiration
+- Persistence failures
+- Log-file failures
+- User-initiated cancellation
+
+Errors must:
+
+- Produce an actionable user-facing message
+- Preserve technical details in redacted logs
+- Preserve completed work
+- Avoid crashing the entire application
+- Avoid losing job state
+- Avoid duplicate submissions
+- Identify whether retry is safe
+- Identify whether fallback is possible
+- Provide a recovery action
+
+Use bounded exponential backoff with jitter for transient errors and polling. Respect `Retry-After` and provider rate-limit headers when available. Do not retry authentication errors, invalid requests, or other permanent failures blindly.
+
+Fallback rules must be explicit:
+
+- A failed validation must not trigger a paid submission.
+- A submission failure may fall back only if the provider has not accepted the batch.
+- Once provider acceptance is uncertain, first reconcile status before resubmitting.
+- A partially completed batch must retry only failed or missing records.
+- Explicit provider-batch mode must not silently use standard processing.
+- Automatic mode may use standard processing only according to documented configuration and with a clear cost warning.
+- Logging failures must not terminate personalization processing, but they must surface a visible warning.
+
+## 11. Preserve Backward Compatibility
+
+Maintain the current standard-processing workflow and existing provider integrations.
+
+If data-model, storage, configuration, or API changes are required:
+
+- Add a safe migration
+- Preserve existing records
+- Maintain compatibility where practical
+- Document breaking changes
+- Provide defaults for newly introduced settings
+- Avoid requiring new API keys for providers the user does not enable
+
+Do not add paid requests to build, test, startup, or CI workflows.
+
+## 12. Add Comprehensive Automated Tests
+
+Use the project’s existing test frameworks where possible. Add missing infrastructure only when necessary.
+
+### Unit Tests
+
+Cover at least:
+
+- Provider capability detection
+- Model batch eligibility
+- Pricing normalization
+- Discount and savings calculations
+- Currency precision and rounding
+- Execution-mode selection
+- Request validation
+- Deterministic custom request IDs
+- Chunk boundaries
+- Provider-status normalization
+- Result reconciliation
+- Retry classification
+- Redaction
+- Log serialization
+- Cost estimation
+
+### Edge-Case Tests
+
+Include:
+
+- Empty input
+- One-record input
+- Maximum-size input
+- One record beyond each provider limit
+- Oversized individual request
+- Oversized total batch
+- Very large datasets requiring multiple chunks
+- Duplicate source IDs
+- Duplicate provider custom IDs
+- Unicode, emoji, multiline text, quotes, and unusual punctuation
+- Empty or missing optional fields
+- Invalid model
+- Model that supports standard requests but not batch requests
+- Provider with no native batch support
+- Missing API key
+- Malformed JSON or JSONL
+- Missing result records
+- Duplicate result records
+- Out-of-order results
+- Unknown provider status
+- Partial success
+- Batch expiration
+- Cancellation during polling
+- Repeated cancellation
+- Timeout during submission
+- Timeout after uncertain submission acceptance
+- HTTP 429 with and without `Retry-After`
+- Transient 5xx errors
+- Permanent 4xx errors
+- Application restart during an active batch
+- External log file unavailable or unwritable
+- Sensitive information in error payloads
+
+### Regression Tests
+
+Protect at least:
+
+- Existing standard API processing
+- Existing provider and model selection
+- Existing template-variable substitution
+- Existing CSV or JSON ingestion
+- Existing personalization output
+- Existing export behavior
+- Existing configuration loading
+- Existing pricing display
+- Existing user data and saved jobs
+- Existing error messages where relied upon
+- No forced migration to batch mode
+- No unexpected paid API calls
+
+### Integration Tests
+
+Use mocked or recorded provider fixtures to verify:
+
+- Provider request generation
+- Submission responses
+- Polling transitions
+- Result retrieval
+- Partial failures
+- Cancellation
+- Expiration
+- Rate-limit handling
+- Resume after restart
+- Multi-chunk reconciliation
+- Pricing and usage reconciliation
+
+Fixtures must be sanitized and must not contain secrets or personal data.
+
+### End-to-End Tests
+
+Add end-to-end coverage for:
+
+1. Importing personalization records
+2. Selecting a batch-capable provider and eligible model
+3. Reviewing standard and batch cost estimates
+4. Submitting a mocked batch
+5. Observing progress
+6. Completing and reconciling results
+7. Exporting personalized output
+8. Handling a partial failure and retrying only failed records
+9. Cancelling a batch
+10. Falling back in automatic mode
+11. Refusing fallback in explicit provider-batch mode
+12. Resuming an active job after application restart or page reload
+
+Default tests must not make paid provider calls. Any live-provider smoke tests must be opt-in, clearly labeled, excluded from normal CI, and guarded by explicit environment variables.
+
+Use fake timers or controllable clocks for polling tests rather than adding long real-time delays.
+
+## 13. Security and Privacy Requirements
+
+- Preserve the application’s existing secret-management approach or improve it safely.
+- Never commit credentials, tokens, real customer records, or generated email content.
+- Validate imported records and provider responses.
+- Protect file paths used for logs, imports, exports, and temporary batch files.
+- Prevent path traversal and unsafe filename handling.
+- Sanitize user-visible error content.
+- Avoid rendering provider output as unsafe HTML.
+- Clean up temporary files according to documented retention policies.
+- Make verbose content logging opt-in and clearly warn about privacy risks.
+- Document relevant provider-side data retention and deletion behavior when officially available.
+
+## 14. Documentation and Maintenance
+
+Update or create:
+
+- Main `README`
+- Batch-processing architecture documentation
+- Provider capability and pricing matrix
+- Setup and configuration instructions
+- Environment-variable reference
+- Batch-mode user guide
+- Logging configuration guide
+- Error-recovery and troubleshooting guide
+- Pricing-maintenance instructions
+- Test instructions
+- Migration notes
+- Security and privacy notes
+- `CHANGELOG`
+- Application version metadata
+
+Document:
+
+- Which providers support verified discounted batch processing
+- Which models are eligible
+- Which providers use standard processing
+- How automatic fallback works
+- How to disable fallback
+- How jobs persist and resume
+- How pricing is sourced and dated
+- How to update pricing safely
+- How logs are stored, rotated, exported, and redacted
+- How to run mocked tests
+- How to opt into live-provider tests
+- Known provider-specific limitations
+
+Apply the repository’s existing versioning policy. If none exists, use semantic versioning and choose an appropriate version increment for the scope of the change. Do not claim a release was published unless it actually was.
+
+# Implementation Constraints
+
+- Use official provider documentation as the primary authority.
+- Do not invent provider capabilities, discounts, prices, limits, or model eligibility.
+- Do not implement mock behavior as though it were a real production integration.
+- Do not hard-code volatile pricing throughout the codebase.
+- Do not expose private reasoning or secrets.
+- Do not silently increase user costs.
+- Do not silently discard failed records.
+- Do not retry ambiguous submissions without reconciliation.
+- Do not make paid API calls during normal tests.
+- Do not remove existing providers merely because they lack native batch support.
+- Do not introduce unrelated dependencies or architectural rewrites.
+- Prefer small, cohesive, testable components.
+- Follow the repository’s existing style, linting, typing, formatting, and architectural conventions.
+- If official documentation is inaccessible or contradictory, explicitly document the uncertainty and use the safest disabled-by-default behavior.
+
+# Required Deliverables
+
+Complete all applicable deliverables:
+
+1. Provider capability and pricing research matrix
+2. Written implementation plan
+3. Provider-neutral batch architecture
+4. Native discounted batch adapters for verified supported providers
+5. Standard-processing fallback for unsupported providers
+6. Durable batch-state persistence and recovery
+7. Updated Provider/Model/Price list
+8. Cost estimation and savings display
+9. Batch workflow controls and progress reporting
+10. Console and external-file logging
+11. Redaction and privacy protection
+12. Graceful error handling and retry logic
+13. Unit, edge-case, regression, integration, and end-to-end tests
+14. Updated documentation
+15. Version and changelog updates
+16. Successful build, lint, type-check, and test verification
+
+# Acceptance Criteria
+
+The work is complete only when:
+
+- Every provider currently supported by the application has been researched and classified.
+- Every claim about batch capability, pricing, eligibility, or limits is traceable to an official source and verification date.
+- Verified native discounted batch providers use their actual batch APIs.
+- Providers without verified native batch support continue to work through the standard path.
+- The UI clearly distinguishes standard processing from native discounted batch processing.
+- Batch and standard prices appear correctly in the Provider/Model/Price list.
+- Users can estimate costs before submission.
+- Active jobs survive interruption and can be resumed.
+- Partial failures preserve successful results.
+- Duplicate billable submissions are prevented.
+- Explicit batch mode never silently falls back to standard processing.
+- Logs are emitted to both the console and an external file or the documented browser-safe export equivalent.
+- Secrets and personal data are redacted.
+- Existing standard-processing behavior remains functional.
+- Automated tests cover normal, failure, boundary, recovery, and regression cases.
+- Normal tests and CI do not incur provider charges.
+- Documentation, version metadata, and the changelog are current.
+- The application builds successfully and all non-pre-existing tests pass.
+
+# Final Response Format
+
+After completing the work, provide a concise implementation report containing:
+
+1. **Summary of completed changes**
+2. **Provider batch-support matrix**
+3. **Architecture and fallback behavior**
+4. **Provider/Model/Price changes**
+5. **Logging and error-handling changes**
+6. **Tests added and commands executed**
+7. **Build, lint, type-check, and test results**
+8. **Files changed**
+9. **Migrations or configuration changes**
+10. **Official documentation sources with verification dates**
+11. **Known limitations, unverified provider information, and recommended follow-up work**
+
+Clearly distinguish:
+
+- Completed and verified work
+- Pre-existing failures
+- Unverified information
+- Work blocked by unavailable documentation, credentials, environment limitations, or provider access

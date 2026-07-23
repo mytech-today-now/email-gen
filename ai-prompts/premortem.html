@@ -1,0 +1,1872 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark light" />
+    <title>AI Batch Personalizer — Application &amp; Server Premortem</title>
+    <style>
+      :root {
+        --ink: #eaf2ff;
+        --muted: #a9b7cc;
+        --paper: #08111f;
+        --panel: #0e1a2c;
+        --panel-2: #132238;
+        --line: #28405f;
+        --blue: #69b7ff;
+        --cyan: #50dfcf;
+        --green: #7ee09b;
+        --amber: #ffd166;
+        --orange: #ff9f6e;
+        --red: #ff6b7a;
+        --violet: #c8a7ff;
+        --shadow: 0 18px 54px rgb(0 0 0 / 28%);
+        --radius: 18px;
+        --mono: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+        --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        margin: 0;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 82% -8%, rgb(80 223 207 / 12%), transparent 29rem),
+          radial-gradient(circle at -12% 26%, rgb(105 183 255 / 12%), transparent 34rem), var(--paper);
+        font: 15.5px/1.62 var(--sans);
+      }
+
+      a {
+        color: var(--blue);
+      }
+      code,
+      .mono {
+        font-family: var(--mono);
+      }
+      code {
+        padding: 0.12em 0.36em;
+        border: 1px solid rgb(105 183 255 / 20%);
+        border-radius: 5px;
+        background: rgb(105 183 255 / 8%);
+        font-size: 0.91em;
+      }
+
+      .shell {
+        width: min(1180px, calc(100% - 32px));
+        margin: 0 auto;
+      }
+      .hero {
+        padding: 64px 0 34px;
+      }
+      .eyebrow {
+        margin: 0 0 12px;
+        color: var(--cyan);
+        font: 700 12px/1.2 var(--mono);
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+      h1 {
+        max-width: 950px;
+        margin: 0;
+        font-size: clamp(2.35rem, 6vw, 5.3rem);
+        line-height: 0.98;
+        letter-spacing: -0.055em;
+      }
+      .dek {
+        max-width: 860px;
+        margin: 24px 0 0;
+        color: var(--muted);
+        font-size: 1.13rem;
+      }
+      .meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 26px;
+      }
+      .pill,
+      .risk-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 7px 11px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: rgb(14 26 44 / 80%);
+        color: var(--muted);
+        font: 650 12px/1 var(--mono);
+      }
+      .pill strong {
+        color: var(--ink);
+      }
+      .decision {
+        margin-top: 30px;
+        padding: 22px 24px;
+        border: 1px solid rgb(255 107 122 / 48%);
+        border-left: 6px solid var(--red);
+        border-radius: var(--radius);
+        background: linear-gradient(120deg, rgb(255 107 122 / 12%), rgb(14 26 44 / 88%));
+        box-shadow: var(--shadow);
+      }
+      .decision h2 {
+        margin: 0 0 6px;
+        font-size: 1.23rem;
+      }
+      .decision p {
+        margin: 0;
+        color: #d7e2f2;
+      }
+
+      .toc-wrap {
+        position: sticky;
+        z-index: 8;
+        top: 0;
+        border-block: 1px solid var(--line);
+        background: rgb(8 17 31 / 88%);
+        backdrop-filter: blur(14px);
+      }
+      .toc {
+        display: flex;
+        gap: 4px;
+        overflow-x: auto;
+        padding: 9px 0;
+        scrollbar-width: thin;
+      }
+      .toc a {
+        flex: 0 0 auto;
+        padding: 7px 10px;
+        border-radius: 8px;
+        color: var(--muted);
+        text-decoration: none;
+        font-size: 0.86rem;
+      }
+      .toc a:hover,
+      .toc a:focus-visible {
+        background: var(--panel-2);
+        color: var(--ink);
+      }
+
+      main {
+        padding: 20px 0 90px;
+      }
+      section {
+        scroll-margin-top: 74px;
+        padding-top: 42px;
+      }
+      .section-head {
+        display: grid;
+        grid-template-columns: 120px 1fr;
+        gap: 20px;
+        margin-bottom: 22px;
+      }
+      .section-no {
+        color: var(--cyan);
+        font: 700 13px/1.3 var(--mono);
+      }
+      h2,
+      h3,
+      h4 {
+        letter-spacing: -0.018em;
+      }
+      .section-head h2 {
+        margin: 0;
+        font-size: clamp(1.65rem, 3.2vw, 2.55rem);
+        line-height: 1.05;
+      }
+      .section-head p {
+        max-width: 780px;
+        margin: 10px 0 0;
+        color: var(--muted);
+      }
+
+      .grid {
+        display: grid;
+        gap: 16px;
+      }
+      .grid.three {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+      .grid.two {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .card {
+        padding: 20px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: linear-gradient(155deg, rgb(19 34 56 / 94%), rgb(10 20 35 / 94%));
+        box-shadow: 0 8px 28px rgb(0 0 0 / 14%);
+      }
+      .card h3 {
+        margin: 0 0 8px;
+        font-size: 1.04rem;
+      }
+      .card p {
+        margin: 7px 0 0;
+        color: var(--muted);
+      }
+      .metric {
+        display: block;
+        margin-bottom: 5px;
+        color: var(--ink);
+        font-size: 1.7rem;
+        font-weight: 760;
+      }
+      .metric.good {
+        color: var(--green);
+      }
+      .metric.bad {
+        color: var(--red);
+      }
+      .metric.warn {
+        color: var(--amber);
+      }
+
+      .table-wrap {
+        overflow-x: auto;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        background: rgb(14 26 44 / 80%);
+      }
+      th,
+      td {
+        padding: 13px 12px;
+        border-bottom: 1px solid var(--line);
+        vertical-align: top;
+        text-align: left;
+      }
+      th {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        background: #13243b;
+        color: #cbd9eb;
+        font: 700 11px/1.25 var(--mono);
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+      }
+      tr:last-child td {
+        border-bottom: 0;
+      }
+      td:nth-child(1),
+      td:nth-child(3),
+      td:nth-child(4),
+      td:nth-child(5),
+      td:nth-child(6) {
+        white-space: nowrap;
+      }
+      .risk-pill {
+        padding: 5px 8px;
+        color: var(--ink);
+      }
+      .critical {
+        border-color: rgb(255 107 122 / 55%);
+        background: rgb(255 107 122 / 12%);
+      }
+      .high {
+        border-color: rgb(255 159 110 / 55%);
+        background: rgb(255 159 110 / 11%);
+      }
+      .medium {
+        border-color: rgb(255 209 102 / 48%);
+        background: rgb(255 209 102 / 9%);
+      }
+
+      .scenario-list {
+        display: grid;
+        gap: 18px;
+      }
+      .scenario {
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        overflow: clip;
+        background: rgb(14 26 44 / 82%);
+      }
+      .scenario > header {
+        padding: 20px 22px;
+        border-bottom: 1px solid var(--line);
+        background: var(--panel-2);
+      }
+      .scenario h3 {
+        margin: 6px 0 0;
+        font-size: 1.24rem;
+      }
+      .scenario .body {
+        display: grid;
+        grid-template-columns: 1.08fr 0.92fr;
+        gap: 0;
+      }
+      .scenario .body > div {
+        padding: 20px 22px;
+      }
+      .scenario .body > div + div {
+        border-left: 1px solid var(--line);
+      }
+      .scenario h4 {
+        margin: 0 0 7px;
+        color: #d9e7f8;
+        font-size: 0.89rem;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+      }
+      .scenario p {
+        margin: 0 0 14px;
+        color: var(--muted);
+      }
+      .scenario ul,
+      .scenario ol {
+        margin: 6px 0 17px;
+        padding-left: 20px;
+      }
+      .scenario li {
+        margin: 5px 0;
+        color: #c5d2e3;
+      }
+      .evidence {
+        color: #aac6e7;
+        font: 12px/1.55 var(--mono);
+        overflow-wrap: anywhere;
+      }
+      .quote {
+        margin: 0 0 15px;
+        padding: 12px 14px;
+        border-left: 3px solid var(--violet);
+        background: rgb(200 167 255 / 7%);
+        color: #e6d9ff;
+        font-style: italic;
+      }
+
+      .timeline {
+        display: grid;
+        gap: 10px;
+      }
+      .phase {
+        display: grid;
+        grid-template-columns: 150px 1fr;
+        gap: 16px;
+        padding: 16px 18px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: var(--panel);
+      }
+      .phase strong {
+        color: var(--cyan);
+        font: 700 12px/1.45 var(--mono);
+        text-transform: uppercase;
+      }
+      .phase ul {
+        margin: 0;
+        padding-left: 19px;
+      }
+
+      .gate {
+        padding: 18px 20px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: var(--panel);
+      }
+      .gate h3 {
+        margin: 0 0 8px;
+      }
+      .gate ul {
+        margin: 0;
+        padding-left: 20px;
+      }
+      .gate.go {
+        border-left: 5px solid var(--green);
+      }
+      .gate.nogo {
+        border-left: 5px solid var(--red);
+      }
+
+      details.prompt-card {
+        margin-bottom: 16px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: var(--panel);
+        overflow: clip;
+      }
+      details.prompt-card summary {
+        cursor: pointer;
+        padding: 18px 20px;
+        background: var(--panel-2);
+        color: var(--ink);
+        font-weight: 740;
+      }
+      details.prompt-card summary::marker {
+        color: var(--cyan);
+      }
+      .prompt-actions {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 16px;
+        border-block: 1px solid var(--line);
+      }
+      .prompt-actions span {
+        color: var(--muted);
+        font-size: 0.83rem;
+      }
+      button.copy {
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        padding: 7px 11px;
+        background: #1a3150;
+        color: var(--ink);
+        cursor: pointer;
+        font: 650 12px/1 var(--mono);
+      }
+      button.copy:hover,
+      button.copy:focus-visible {
+        border-color: var(--blue);
+      }
+      pre.prompt {
+        margin: 0;
+        padding: 22px;
+        overflow: auto;
+        white-space: pre-wrap;
+        color: #d8e5f5;
+        background: #091421;
+        font: 12.5px/1.65 var(--mono);
+      }
+
+      .note {
+        padding: 16px 18px;
+        border: 1px solid var(--line);
+        border-radius: 13px;
+        background: rgb(105 183 255 / 7%);
+        color: #c7d7ea;
+      }
+      .note strong {
+        color: var(--blue);
+      }
+      .small {
+        color: var(--muted);
+        font-size: 0.87rem;
+      }
+      footer {
+        padding: 30px 0 60px;
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+      }
+
+      @media (max-width: 850px) {
+        .grid.three,
+        .grid.two,
+        .scenario .body {
+          grid-template-columns: 1fr;
+        }
+        .scenario .body > div + div {
+          border-top: 1px solid var(--line);
+          border-left: 0;
+        }
+        .section-head {
+          grid-template-columns: 1fr;
+          gap: 4px;
+        }
+        .phase {
+          grid-template-columns: 1fr;
+          gap: 7px;
+        }
+      }
+
+      @media print {
+        :root {
+          --ink: #111827;
+          --muted: #374151;
+          --paper: white;
+          --panel: #f8fafc;
+          --panel-2: #eef2f7;
+          --line: #cbd5e1;
+        }
+        body {
+          background: white;
+          font-size: 10pt;
+        }
+        .shell {
+          width: 100%;
+        }
+        .hero {
+          padding-top: 0;
+        }
+        .toc-wrap,
+        button.copy {
+          display: none;
+        }
+        .card,
+        .decision,
+        .scenario,
+        details.prompt-card {
+          box-shadow: none;
+          break-inside: avoid;
+        }
+        details.prompt-card:not([open]) > *:not(summary) {
+          display: block;
+        }
+        pre.prompt {
+          color: #111827;
+          background: #f8fafc;
+          font-size: 8pt;
+        }
+        a {
+          color: inherit;
+          text-decoration: none;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        html {
+          scroll-behavior: auto;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="hero shell">
+      <p class="eyebrow">Application + server premortem · 21 July 2026</p>
+      <h1>Assume it failed in production. What happened?</h1>
+      <p class="dek">
+        A forward-looking failure analysis of the current local working tree for AI Batch Personalizer 2.0,
+        covering the browser source of truth, loopback Express gateway, provider batches, live Resend
+        delivery, hostile-site research, storage and restore, and the release pipeline.
+      </p>
+      <div class="meta">
+        <span class="pill"><strong>Scope</strong> application + server</span>
+        <span class="pill"><strong>Evidence</strong> static review + local gates</span>
+        <span class="pill"><strong>Risk model</strong> L × I × D</span>
+        <span class="pill"><strong>Working tree</strong> materially uncommitted</span>
+      </div>
+      <div class="decision">
+        <h2>Decision: conditional NO-GO for high-consequence workflows</h2>
+        <p>
+          Do not use the current build for unattended paid provider batches, live bulk Resend, or research
+          against untrusted domains. Single-tab mock/local generation, manual review, copy/export, and
+          backed-up evaluation remain reasonable. The blocker is not ordinary happy-path correctness; it is
+          ambiguous external side effects when requests, tabs, credentials, or the process fail at exactly the
+          wrong moment.
+        </p>
+      </div>
+    </header>
+
+    <div class="toc-wrap">
+      <nav class="toc shell" aria-label="Report sections">
+        <a href="#summary">Summary</a>
+        <a href="#method">Method</a>
+        <a href="#register">Risk register</a>
+        <a href="#scenarios">Failure scenarios</a>
+        <a href="#plan">Action plan</a>
+        <a href="#gates">Decision gates</a>
+        <a href="#prompts">AI prompts</a>
+        <a href="#verification">Verification</a>
+      </nav>
+    </div>
+
+    <main class="shell">
+      <section id="summary">
+        <div class="section-head">
+          <span class="section-no">01 / SUMMARY</span>
+          <div>
+            <h2>Executive assessment</h2>
+            <p>
+              The strongest controls protect the happy path. The largest losses live in the recovery path.
+            </p>
+          </div>
+        </div>
+
+        <div class="grid three">
+          <article class="card">
+            <span class="metric bad">4 critical</span>
+            <h3>External-effect and boundary failures</h3>
+            <p>
+              Provider batches, multi-tab execution, live sending, and hostile research can escape the
+              browser’s state model.
+            </p>
+          </article>
+          <article class="card">
+            <span class="metric warn">5 high</span>
+            <h3>Loss and availability failures</h3>
+            <p>
+              Archives, unbounded responses, temporary storage, shutdown, and restore validation need hard
+              limits and recovery.
+            </p>
+          </article>
+          <article class="card">
+            <span class="metric good">158 / 158</span>
+            <h3>Assertions passed</h3>
+            <p>
+              The full Vitest command still exited nonzero because its worker pool produced one unhandled
+              startup error.
+            </p>
+          </article>
+        </div>
+
+        <div class="grid two" style="margin-top: 16px">
+          <article class="card">
+            <h3>What is already sound</h3>
+            <ul>
+              <li>Loopback is the default bind; Helmet/CSP and origin checks are present.</li>
+              <li>
+                Runtime credentials are memory-only, sanitized in status responses, and cleared on shutdown.
+              </li>
+              <li>
+                Generated/editor HTML uses a shared sanitizer and server send revalidates canonical HTML.
+              </li>
+              <li>Webhook signatures and duplicate delivery IDs are checked.</li>
+              <li>Imported static JavaScript is parsed instead of executed.</li>
+              <li>The committed-secret scan passed and <code>.env</code> is not tracked.</li>
+              <li><code>npm audit --audit-level=low</code> reported zero known vulnerabilities.</li>
+            </ul>
+          </article>
+          <article class="card">
+            <h3>What changes the decision</h3>
+            <ul>
+              <li>A durable operation ledger closes the “provider accepted it, app forgot it” window.</li>
+              <li>
+                A browser-wide lease prevents two tabs from starting the same paid or delivery operation.
+              </li>
+              <li>
+                Research traffic is sandboxed, DNS-pinned, streamed through byte budgets, and fault-tested.
+              </li>
+              <li>
+                Resend confirmation is bound to a fresh suppression/consent revision and partial receipts
+                persist.
+              </li>
+              <li>Backup import streams and validates schemas before allocating or committing.</li>
+              <li>All required release commands exit zero from a clean, reproducible workspace.</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section id="method">
+        <div class="section-head">
+          <span class="section-no">02 / METHOD</span>
+          <div>
+            <h2>Premortem frame and assumptions</h2>
+            <p>
+              Imagine the date is 21 August 2026 and the application has caused duplicate cost, an unwanted
+              send, data loss, or local-network exposure. Work backward to the earliest preventable decision.
+            </p>
+          </div>
+        </div>
+
+        <div class="note">
+          <strong>Skill note.</strong> The referenced <code>premortem.md</code> was not present in this
+          repository or in the common local Codex/Claude skill and prompt locations available during review.
+          To avoid blocking, this report uses the standard premortem components: explicit success criteria,
+          assumptions, failure stories, causal chains, evidence, early warnings, prevention/containment,
+          owners, acceptance tests, and go/no-go gates.
+        </div>
+
+        <div class="grid three" style="margin-top: 16px">
+          <article class="card">
+            <h3>Success means</h3>
+            <p>
+              No duplicate or orphaned paid operation; no message sent against current suppression/consent; no
+              private-network research request; no unrecoverable browser-owned data; and deterministic
+              recovery after tab, server, or network failure.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Operating assumptions</h3>
+            <p>
+              Single-user local deployment on <code>127.0.0.1</code>; imported websites and AI output are
+              hostile; provider calls and sends are real external side effects; browser tabs, network,
+              credentials, and process uptime are unreliable.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Scoring</h3>
+            <p>
+              Likelihood (L), impact (I), and difficulty of detection before harm (D) each score 1–5. RPN = L
+              × I × D. Critical ≥ 70, High 40–69, Medium 20–39, Low &lt; 20.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section id="register">
+        <div class="section-head">
+          <span class="section-no">03 / REGISTER</span>
+          <div>
+            <h2>Prioritized risk register</h2>
+            <p>Scores prioritize engineering order; they are not statistical forecasts.</p>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Failure</th>
+                <th>L</th>
+                <th>I</th>
+                <th>D</th>
+                <th>RPN</th>
+                <th>Priority / owner</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>R1</td>
+                <td>
+                  Provider batch is accepted remotely but recorded locally as failed or never recorded; retry
+                  duplicates spend.
+                </td>
+                <td>5</td>
+                <td>5</td>
+                <td>5</td>
+                <td>125</td>
+                <td><span class="risk-pill critical">Critical · platform</span></td>
+              </tr>
+              <tr>
+                <td>R4</td>
+                <td>
+                  Resend acts on stale consent/suppression state or partially sends without durable receipts.
+                </td>
+                <td>4</td>
+                <td>5</td>
+                <td>5</td>
+                <td>100</td>
+                <td><span class="risk-pill critical">Critical · delivery</span></td>
+              </tr>
+              <tr>
+                <td>R2</td>
+                <td>
+                  Two tabs concurrently generate, edit, poll, or send; last-write-wins hides duplicate side
+                  effects.
+                </td>
+                <td>4</td>
+                <td>5</td>
+                <td>4</td>
+                <td>80</td>
+                <td><span class="risk-pill critical">Critical · browser</span></td>
+              </tr>
+              <tr>
+                <td>R3</td>
+                <td>
+                  Hostile research page reaches a private target through DNS rebinding or exhausts/escapes an
+                  unsandboxed browser.
+                </td>
+                <td>3</td>
+                <td>5</td>
+                <td>5</td>
+                <td>75</td>
+                <td><span class="risk-pill critical">Critical · security</span></td>
+              </tr>
+              <tr>
+                <td>R5</td>
+                <td>
+                  Oversized provider responses, 50,000-record batch API payloads, or synchronous ZIP work
+                  exhaust memory/CPU.
+                </td>
+                <td>4</td>
+                <td>4</td>
+                <td>3</td>
+                <td>48</td>
+                <td><span class="risk-pill high">High · platform</span></td>
+              </tr>
+              <tr>
+                <td>R6</td>
+                <td>
+                  A backup expands before the stated limit is checked, or malformed store records commit
+                  without schema validation.
+                </td>
+                <td>3</td>
+                <td>4</td>
+                <td>4</td>
+                <td>48</td>
+                <td><span class="risk-pill high">High · data</span></td>
+              </tr>
+              <tr>
+                <td>R9</td>
+                <td>
+                  Shutdown or a hanging provider request terminates mid-side-effect, loses logs, or creates
+                  ambiguous work.
+                </td>
+                <td>3</td>
+                <td>4</td>
+                <td>4</td>
+                <td>48</td>
+                <td><span class="risk-pill high">High · server</span></td>
+              </tr>
+              <tr>
+                <td>R7</td>
+                <td>
+                  IndexedDB falls back to temporary memory; paid results disappear when the page closes.
+                </td>
+                <td>3</td>
+                <td>5</td>
+                <td>3</td>
+                <td>45</td>
+                <td><span class="risk-pill high">High · browser</span></td>
+              </tr>
+              <tr>
+                <td>R8</td>
+                <td>
+                  Legacy mutable routes omit the modern request token and expensive routes bypass consistent
+                  schemas/limits.
+                </td>
+                <td>3</td>
+                <td>4</td>
+                <td>3</td>
+                <td>36</td>
+                <td><span class="risk-pill medium">Medium · server</span></td>
+              </tr>
+              <tr>
+                <td>R10</td>
+                <td>
+                  Release gates look green at assertion level while commands fail, formatting drifts, and
+                  fault paths remain untested.
+                </td>
+                <td>4</td>
+                <td>3</td>
+                <td>2</td>
+                <td>24</td>
+                <td><span class="risk-pill medium">Medium · quality</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="scenarios">
+        <div class="section-head">
+          <span class="section-no">04 / SCENARIOS</span>
+          <div>
+            <h2>Failure stories, signals, and controls</h2>
+            <p>
+              Each story is phrased as if the loss already occurred, then traced back to code and an
+              acceptance test.
+            </p>
+          </div>
+        </div>
+
+        <div class="scenario-list">
+          <article class="scenario">
+            <header>
+              <span class="risk-pill critical">R1 · Critical · 125</span>
+              <h3>“We paid twice because a live provider batch was labeled failed.”</h3>
+            </header>
+            <div class="body">
+              <div>
+                <p class="quote">
+                  A provider accepted chunk 1. Chunk 2 or the first status poll failed. The UI marked every
+                  placeholder and the job failed, stopped resuming it, and the operator retried.
+                </p>
+                <h4>Causal chain</h4>
+                <ol>
+                  <li>
+                    Chunk submissions run sequentially; successful provider IDs exist only in a local array
+                    until every chunk completes.
+                  </li>
+                  <li>
+                    A later failure rejects the entire HTTP request, so already-created provider jobs are not
+                    returned to the browser.
+                  </li>
+                  <li>
+                    After a successful response, the same browser <code>catch</code> handles both submission
+                    and monitoring errors and marks all results failed.
+                  </li>
+                  <li>
+                    Reload recovery resumes only the newest job whose status is still running/stopping; a
+                    failed or second active job is ignored.
+                  </li>
+                  <li>
+                    A missing runtime credential after server restart triggers the same false-failure path.
+                  </li>
+                </ol>
+                <h4>Evidence</h4>
+                <p class="evidence">
+                  src/ai/providerBatchService.js:292–321, 399–424, 519–550, 685–741 · public/app.js:2205–2231,
+                  2430–2443 · server.js:10–18
+                </p>
+              </div>
+              <div>
+                <h4>Early warnings</h4>
+                <ul>
+                  <li>
+                    Local job is <code>failed</code> while provider dashboard still shows
+                    validating/in-progress.
+                  </li>
+                  <li>
+                    Repeated deterministic <code>customId</code> values across separate provider batch IDs.
+                  </li>
+                  <li>Provider cost/usage increases without matching completed local results.</li>
+                  <li>
+                    Log has “submitted” followed by a poll/network/credential error and no terminal provider
+                    status.
+                  </li>
+                </ul>
+                <h4>Prevent / contain</h4>
+                <ul>
+                  <li>
+                    Persist an operation and each provider ID immediately around every external side effect.
+                  </li>
+                  <li>
+                    Separate submission state from monitoring state; poll errors become
+                    <code>monitoring-degraded</code>, never terminal.
+                  </li>
+                  <li>
+                    Return and persist partial chunk receipts; reconcile ambiguous operations before allowing
+                    retry.
+                  </li>
+                  <li>Resume all active provider operations with bounded backoff.</li>
+                </ul>
+                <h4>Acceptance test</h4>
+                <p>
+                  Inject failure after provider acceptance, after chunk 1 of 2, during first poll, after
+                  server restart, and after response loss. Exactly one remote batch per chunk exists; local
+                  state remains reconcilable; retry never submits until reconciliation proves absence.
+                </p>
+              </div>
+            </div>
+          </article>
+
+          <article class="scenario">
+            <header>
+              <span class="risk-pill critical">R2 · Critical · 80</span>
+              <h3>“Two tabs sent the same scope and then overwrote each other’s state.”</h3>
+            </header>
+            <div class="body">
+              <div>
+                <p class="quote">
+                  Both tabs loaded the same IndexedDB snapshot. Neither knew the other was processing. Both
+                  initiated paid work; one tab’s final writes hid the other operation.
+                </p>
+                <h4>Causal chain</h4>
+                <ul>
+                  <li><code>state.processing</code> is in-memory and tab-local.</li>
+                  <li>
+                    The application has no <code>navigator.locks</code>, <code>BroadcastChannel</code>, shared
+                    lease, revision check, or idempotent start operation.
+                  </li>
+                  <li>
+                    Job/result IDs are newly generated per invocation, so provider and Resend idempotency do
+                    not collapse duplicate tab operations.
+                  </li>
+                  <li>
+                    IndexedDB writes use unconditional <code>put</code>; edits and settings are
+                    last-write-wins.
+                  </li>
+                </ul>
+                <h4>Evidence</h4>
+                <p class="evidence">
+                  public/app.js:2265–2304, 3074–3103 · public/modules/storage.js:53–111 · repository-wide
+                  search: no navigator.locks or BroadcastChannel usage
+                </p>
+              </div>
+              <div>
+                <h4>Early warnings</h4>
+                <ul>
+                  <li>Two running jobs for the same project/record/template digest.</li>
+                  <li>Duplicate recipients with different result IDs.</li>
+                  <li>Settings or edited HTML revert after switching tabs.</li>
+                </ul>
+                <h4>Prevent / contain</h4>
+                <ul>
+                  <li>Acquire a named browser-wide lease for processing, restore, and sending.</li>
+                  <li>Broadcast active operation state and render other tabs read-only for that scope.</li>
+                  <li>Add record revisions and compare-and-swap writes for editable objects.</li>
+                  <li>Use server operation IDs as the ultimate duplicate barrier.</li>
+                </ul>
+                <h4>Acceptance test</h4>
+                <p>
+                  Open two Playwright contexts against the same persistent profile and click Process/Send
+                  simultaneously. Only one external call occurs; the losing tab shows the owner and can
+                  observe or take over only after lease expiry and reconciliation.
+                </p>
+              </div>
+            </div>
+          </article>
+
+          <article class="scenario">
+            <header>
+              <span class="risk-pill critical">R3 · Critical · 75</span>
+              <h3>“A prospect website reached an internal service and crashed the research host.”</h3>
+            </header>
+            <div class="body">
+              <div>
+                <p class="quote">
+                  The attacker’s DNS answered publicly during validation and privately when Chromium
+                  connected. The page then loaded active JavaScript in a browser launched without its sandbox
+                  and consumed unbounded resources before post-render size checks ran.
+                </p>
+                <h4>Causal chain</h4>
+                <ul>
+                  <li>
+                    Node validates DNS, but Chromium resolves and connects separately; the route handler
+                    caches the validation promise by origin.
+                  </li>
+                  <li>
+                    The browser starts with <code>--no-sandbox</code>, JavaScript enabled, ignored TLS errors,
+                    and broad public-origin subresources.
+                  </li>
+                  <li>
+                    The document byte check runs after <code>page.content()</code>; script/XHR totals are not
+                    bounded during transfer.
+                  </li>
+                  <li>
+                    Research may launch a new browser for the main page and up to three contact pages per
+                    record.
+                  </li>
+                </ul>
+                <h4>Evidence</h4>
+                <p class="evidence">
+                  src/research/websiteFetcher.js:65–84, 91–105, 119–142 ·
+                  src/research/researchService.js:88–120
+                </p>
+              </div>
+              <div>
+                <h4>Early warnings</h4>
+                <ul>
+                  <li>Final socket IP differs from validated DNS answers.</li>
+                  <li>Chromium CPU/RAM spikes or child processes survive timeouts.</li>
+                  <li>Research accesses unexpected origins or large script/XHR transfers.</li>
+                </ul>
+                <h4>Prevent / contain</h4>
+                <ul>
+                  <li>
+                    Pin DNS to the validated public address at connect time through a controlled
+                    proxy/resolver; validate every redirect and socket.
+                  </li>
+                  <li>Restore Chromium sandboxing and strict TLS; fail closed if unavailable.</li>
+                  <li>
+                    Apply streaming per-response, per-page, and per-job byte/time budgets before allocation.
+                  </li>
+                  <li>Disable unneeded browser features and pool isolated contexts with forced teardown.</li>
+                </ul>
+                <h4>Acceptance test</h4>
+                <p>
+                  A DNS-rebinding fixture, redirect-to-private fixture, IPv4-mapped IPv6 target, oversized
+                  stream, endless JavaScript, service worker, websocket, and download all fail closed without
+                  reaching the private listener or exceeding the resource budget.
+                </p>
+              </div>
+            </div>
+          </article>
+
+          <article class="scenario">
+            <header>
+              <span class="risk-pill critical">R4 · Critical · 100</span>
+              <h3>
+                “We sent after suppression, lost partial receipts, and could not prove the confirmed content.”
+              </h3>
+            </header>
+            <div class="body">
+              <div>
+                <p class="quote">
+                  The confirmation dialog stayed open while suppression state changed. Send reused its cached
+                  preflight snapshot; a later Resend batch failed after an earlier one succeeded, so the
+                  endpoint returned no receipts and the browser stored none.
+                </p>
+                <h4>Causal chain</h4>
+                <ul>
+                  <li>
+                    Suppressions are read once before the dialog and cached in
+                    <code>state.resendPreflight</code>.
+                  </li>
+                  <li>
+                    Final Send reuses the cached items/suppressions rather than opening a fresh IndexedDB
+                    transaction.
+                  </li>
+                  <li>
+                    Server sends chunks sequentially but throws away earlier success receipts if a later chunk
+                    fails.
+                  </li>
+                  <li>
+                    Idempotency hashes only sorted item IDs and From address, not message/recipient digests or
+                    a distinct send operation.
+                  </li>
+                  <li>
+                    Bulk postal address is checked for non-empty input but not guaranteed inside the canonical
+                    message; test-recipient mode borrows another record’s consent evidence.
+                  </li>
+                </ul>
+                <h4>Evidence</h4>
+                <p class="evidence">
+                  public/app.js:3009–3049, 3074–3103 · src/resend/resendGateway.js:87–124, 135–205 ·
+                  src/routes/resendRoutes.js:51–84
+                </p>
+              </div>
+              <div>
+                <h4>Early warnings</h4>
+                <ul>
+                  <li>Provider shows sent messages absent from <code>deliveryHistory</code>.</li>
+                  <li>Preflight age/revision is unavailable or confirmation stays open for minutes.</li>
+                  <li>Same idempotency key maps to changed recipient/content.</li>
+                  <li>
+                    Final HTML lacks the configured postal address or recipient-specific unsubscribe target.
+                  </li>
+                </ul>
+                <h4>Prevent / contain</h4>
+                <ul>
+                  <li>
+                    Bind confirmation to a short-lived digest of exact messages, sender, consent evidence, and
+                    suppression revision.
+                  </li>
+                  <li>Re-read all eligibility state atomically immediately before send.</li>
+                  <li>
+                    Persist per-chunk operation and receipts; return partial status instead of losing
+                    successes.
+                  </li>
+                  <li>
+                    Use operation/chunk/message digests for idempotency and explicitly model an intentional
+                    resend.
+                  </li>
+                </ul>
+                <h4>Acceptance test</h4>
+                <p>
+                  Add a suppression after preflight, change a recipient/content after confirmation, drop the
+                  response after the first successful chunk, restart, and retry. No newly suppressed address
+                  is contacted; exact receipts recover; no duplicate occurs; a deliberate resend requires a
+                  new reviewed operation.
+                </p>
+              </div>
+            </div>
+          </article>
+
+          <article class="scenario">
+            <header>
+              <span class="risk-pill high">R5 · High · 48</span>
+              <h3>“A large import/export froze the UI and exhausted the gateway.”</h3>
+            </header>
+            <div class="body">
+              <div>
+                <p>
+                  The documented 1,000-record limit is not enforced by the provider-batch route, whose schema
+                  permits 50,000 records. Provider helpers call <code>response.text()</code> without applying
+                  <code>providerResponseBytes</code>. Browser backup and delivery export use synchronous
+                  <code>zipSync</code>; OPFS staging occurs only after the full archive exists in memory.
+                </p>
+                <p class="evidence">
+                  src/routes/gatewayRoutes.js:28–37 · src/ai/gatewayProvider.js:31–61 ·
+                  src/ai/providerBatchService.js:49–79 · public/app.js:2992–2998 ·
+                  public/modules/backup.js:37–63
+                </p>
+              </div>
+              <div>
+                <h4>Controls / acceptance</h4>
+                <ul>
+                  <li>
+                    Enforce config-derived counts, nesting, fields, bytes, and concurrency at every API
+                    boundary.
+                  </li>
+                  <li>Stream and abort provider bodies at the byte cap.</li>
+                  <li>Move compression to a worker/stream directly to OPFS and report progress/cancel.</li>
+                  <li>
+                    Load-test maximum supported records and responses under explicit RAM, event-loop-lag, and
+                    wall-clock budgets.
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </article>
+
+          <article class="scenario">
+            <header>
+              <span class="risk-pill high">R6 · High · 48</span>
+              <h3>“A backup passed superficial checks, then crashed or corrupted restored state.”</h3>
+            </header>
+            <div class="body">
+              <div>
+                <p>
+                  <code>unzipSync</code> expands the complete archive before expanded bytes are counted, so
+                  the decompression-bomb limit is post-allocation. Store payloads are checked only for array
+                  shape, depth, and prototype keys; there are no per-store schemas, record count limits, key
+                  uniqueness checks, or relationship validation before one-transaction commit.
+                </p>
+                <p class="evidence">public/modules/backup.js:5–6, 67–105, 108–122</p>
+              </div>
+              <div>
+                <h4>Controls / acceptance</h4>
+                <ul>
+                  <li>
+                    Stream entries with compressed/expanded, entry-count, per-entry, ratio, and time limits
+                    enforced before allocation.
+                  </li>
+                  <li>Validate each store with versioned schemas and cross-store referential integrity.</li>
+                  <li>Show a dry-run plan and reject unknown required categories/duplicate keys.</li>
+                  <li>Fuzz archives and prove zero mutation on every failure.</li>
+                </ul>
+              </div>
+            </div>
+          </article>
+
+          <article class="scenario">
+            <header>
+              <span class="risk-pill high">R7 · High · 45</span>
+              <h3>“The user completed paid work in temporary mode and lost it on close.”</h3>
+            </header>
+            <div class="body">
+              <div>
+                <p>
+                  Any IndexedDB open failure falls back to an in-memory repository. A status warning is shown,
+                  but processing, research, sending, restore, and editing remain enabled; later status updates
+                  can displace the warning. Browser persistence is optional and there is no automatic
+                  recoverable journal outside IndexedDB.
+                </p>
+                <p class="evidence">public/modules/storage.js:142–212, 245–250 · public/app.js:4173–4203</p>
+              </div>
+              <div>
+                <h4>Controls / acceptance</h4>
+                <ul>
+                  <li>
+                    Use a persistent, non-dismissible degraded-mode banner and explicit acknowledgement.
+                  </li>
+                  <li>Disable paid/external side effects by default in temporary mode.</li>
+                  <li>Offer immediate encrypted/manual backup and periodic checkpoint prompts.</li>
+                  <li>
+                    Simulate VersionError, blocked upgrade, quota exhaustion, eviction, and close/reopen.
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </article>
+
+          <article class="scenario">
+            <header>
+              <span class="risk-pill medium">R8 · Medium · 36</span>
+              <h3>“An old API surface bypassed the new gateway contract.”</h3>
+            </header>
+            <div class="body">
+              <div>
+                <p>
+                  Modern <code>/gateway/*</code> mutations call <code>requireGatewayRequest</code>, while
+                  legacy record, job, result, regeneration, export, and model-sync mutations do not. Many also
+                  lack strict request schemas or config-derived maxima. Origin checks reduce drive-by browser
+                  risk but absent-Origin clients are accepted, and the server does not enforce the expected
+                  loopback Host header.
+                </p>
+                <p class="evidence">
+                  src/routes/dataRoutes.js:32–148 · src/routes/processingRoutes.js:77–149 ·
+                  src/routes/resultRoutes.js:62–238 · src/routes/modelCatalogRoutes.js:32–43 ·
+                  src/middleware/security.js:53–72
+                </p>
+              </div>
+              <div>
+                <h4>Controls / acceptance</h4>
+                <ul>
+                  <li>
+                    Remove unused legacy routes or put all unsafe methods behind one global token/origin/host
+                    policy.
+                  </li>
+                  <li>Keep the signed webhook as an explicit exception.</li>
+                  <li>Apply strict schemas, body limits, and expensive-route concurrency/rate limits.</li>
+                  <li>
+                    Test missing/spoofed Origin, Host, CSRF, duplicate headers, content types, and public-bind
+                    misconfiguration.
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </article>
+
+          <article class="scenario">
+            <header>
+              <span class="risk-pill high">R9 · High · 48</span>
+              <h3>“Shutdown cut across a side effect and left no reliable audit trail.”</h3>
+            </header>
+            <div class="body">
+              <div>
+                <p>
+                  Provider-batch HTTP helpers have no AbortSignal timeout. Shutdown clears credentials
+                  immediately, waits for HTTP connections, and force-exits after eight seconds; the force path
+                  does not close SQLite or the rotating logger. There is no idempotent shutdown guard or
+                  shared abort controller for in-flight work.
+                </p>
+                <p class="evidence">
+                  src/ai/providerBatchService.js:49–79 · server.js:10–29 · src/utils/logger.js:45–72
+                </p>
+              </div>
+              <div>
+                <h4>Controls / acceptance</h4>
+                <ul>
+                  <li>Add deadlines to every outbound call and a global shutdown AbortController.</li>
+                  <li>
+                    Stop accepting new work, checkpoint operation state, abort safely, then flush logs and
+                    close DB.
+                  </li>
+                  <li>Make shutdown idempotent and report unresolved operations on next start.</li>
+                  <li>
+                    Signal during upload, submit, poll, research, send, log rotation, and SQLite write in
+                    tests.
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </article>
+
+          <article class="scenario">
+            <header>
+              <span class="risk-pill medium">R10 · Medium · 24</span>
+              <h3>“We shipped because the assertions were green while the release command was red.”</h3>
+            </header>
+            <div class="body">
+              <div>
+                <p>
+                  All 158 Vitest assertions passed, but <code>npm test</code> exited 1 with an unhandled
+                  fork-runner startup timeout and worker termination timeouts. Formatting also fails in four
+                  files. Existing provider-batch E2E exercises happy-path reload only, while the dominant
+                  failures require network/crash/partial-effect and multi-context tests.
+                </p>
+                <p class="evidence">Local commands on 2026-07-21 · tests/e2e/provider-batch.spec.js:1–83</p>
+              </div>
+              <div>
+                <h4>Controls / acceptance</h4>
+                <ul>
+                  <li>CI requires command exit code 0, not just assertion counts.</li>
+                  <li>Stabilize worker configuration and capture open-handle diagnostics.</li>
+                  <li>Run formatting check in pre-commit/CI and fix the four reported files.</li>
+                  <li>Add deterministic fault injection for every critical scenario.</li>
+                </ul>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="plan">
+        <div class="section-head">
+          <span class="section-no">05 / PLAN</span>
+          <div>
+            <h2>Sequenced risk-reduction plan</h2>
+            <p>
+              Order is based on irreversible external harm first, then hostile boundaries, then recoverability
+              and throughput.
+            </p>
+          </div>
+        </div>
+        <div class="timeline">
+          <div class="phase">
+            <strong>Now · containment</strong>
+            <div>
+              <ul>
+                <li>
+                  Default provider batch to Standard API or mock; require an “experimental / reconcile in
+                  provider dashboard” acknowledgement.
+                </li>
+                <li>
+                  Disable live bulk send and hostile-site research outside an explicitly controlled evaluation
+                  profile.
+                </li>
+                <li>
+                  Open only one tab; export a backup before paid work; keep provider dashboards visible during
+                  tests.
+                </li>
+                <li>
+                  Fix formatting drift and preserve a clean checkpoint/branch before structural changes.
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div class="phase">
+            <strong>Days 1–3 · P0</strong>
+            <div>
+              <ul>
+                <li>
+                  Implement durable external-operation ledger, partial chunk receipts, nonterminal poll
+                  failures, and resume-all reconciliation.
+                </li>
+                <li>Add browser-wide operation lease and same-scope idempotency.</li>
+                <li>Bind Resend confirmation to fresh eligibility state and persist partial sends.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="phase">
+            <strong>Days 4–7 · boundary</strong>
+            <div>
+              <ul>
+                <li>Ship DNS-pinned, sandboxed, resource-budgeted research or keep research disabled.</li>
+                <li>
+                  Apply global unsafe-method protection, strict schemas, loopback Host enforcement, response
+                  limits, and request deadlines.
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div class="phase">
+            <strong>Week 2 · data</strong>
+            <div>
+              <ul>
+                <li>
+                  Replace synchronous archive expansion/compression with bounded streaming/worker flows.
+                </li>
+                <li>
+                  Add versioned backup schemas, referential validation, dry-run restore, and temporary-mode
+                  guardrails.
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div class="phase">
+            <strong>Release · proof</strong>
+            <div>
+              <ul>
+                <li>Run crash/network/two-tab fault matrix and verify provider-dashboard reconciliation.</li>
+                <li>
+                  Require lint, format, Vitest, Chromium/Firefox/WebKit E2E, secret scan, audit, and
+                  clean-worktree checks to exit zero.
+                </li>
+                <li>Document residual risks, rollback, telemetry signals, and on-call/runbook ownership.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="gates">
+        <div class="section-head">
+          <span class="section-no">06 / GATES</span>
+          <div>
+            <h2>Go / no-go criteria</h2>
+            <p>These are observable release conditions, not “best effort” aspirations.</p>
+          </div>
+        </div>
+        <div class="grid two">
+          <article class="gate nogo">
+            <h3>NO-GO if any is true</h3>
+            <ul>
+              <li>
+                A remote operation can exist without a durable local operation ID and reconciliation path.
+              </li>
+              <li>Two tabs can create two provider/send calls for one logical operation.</li>
+              <li>A poll/network/credential error marks a nonterminal provider job failed.</li>
+              <li>Final send does not revalidate current suppression/consent and exact content.</li>
+              <li>
+                Research can run unsandboxed, resolve separately from validation, or exceed streaming budgets.
+              </li>
+              <li>Backup expands before limits or commits records without schemas.</li>
+              <li>Any required quality command exits nonzero.</li>
+            </ul>
+          </article>
+          <article class="gate go">
+            <h3>GO when all are true</h3>
+            <ul>
+              <li>
+                Fault injection proves no duplicate/orphan operation across response loss, restart, and
+                partial chunks.
+              </li>
+              <li>Multi-context E2E proves one active owner and safe takeover.</li>
+              <li>Resend receipts and eligibility are durable, fresh, digest-bound, and auditable.</li>
+              <li>Private-network and hostile-page research fixtures fail closed within resource budgets.</li>
+              <li>Maximum supported import/export/restore completes within published RAM/time budgets.</li>
+              <li>A clean clone passes every required command twice consecutively.</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section id="prompts">
+        <div class="section-head">
+          <span class="section-no">07 / AI PROMPTS</span>
+          <div>
+            <h2>Implementation-ready prompts</h2>
+            <p>
+              Run these in order. Each prompt owns a distinct boundary and includes evidence, constraints,
+              failure tests, and acceptance criteria to prevent overlapping or cosmetic fixes.
+            </p>
+          </div>
+        </div>
+
+        <details class="prompt-card" open>
+          <summary>Prompt 1 — Durable provider-batch operations, recovery, and multi-tab exclusion</summary>
+          <div class="prompt-actions">
+            <span>Solves R1 + R2 provider-generation paths + R9 ambiguity</span
+            ><button class="copy" type="button">Copy prompt</button>
+          </div>
+          <pre class="prompt">
+You are a senior reliability engineer working in the AI Batch Personalizer repository. Implement an end-to-end, crash-recoverable external-operation protocol for native provider batches, and prevent concurrent browser tabs from starting the same logical operation.
+
+Context and observed defects
+- The browser is intended to own projects, records, jobs, and results. The loopback server owns credentials and external provider calls.
+- src/ai/providerBatchService.js submits chunks sequentially and does not durably persist each provider batch ID before attempting the next chunk. A later error rejects the whole request and can orphan earlier provider jobs.
+- public/app.js uses one catch block around submission plus monitoring; any polling, network, or missing-credential error after successful submission marks all placeholder results and the job failed.
+- reload recovery resumes only the newest provider-batch job in running/stopping state.
+- tab-local state.processing is the only active-operation guard. Two tabs can start distinct jobs with distinct IDs for the same project/record/template scope.
+- Server restart clears runtime credentials; this must pause monitoring for credential re-entry, not relabel remote work terminal.
+
+Required design
+1. Introduce an explicit operation state machine. At minimum distinguish: preparing, submitting, partially-submitted, submitted, monitoring, monitoring-degraded, awaiting-credential, cancel-requested, reconciling, completed, partially-completed, canceled, failed-terminal, and ambiguous. Document legal transitions and make illegal transitions fail loudly in development/tests.
+2. Generate a stable operationId in the browser before the first gateway call. Persist it atomically with the job, exact record IDs, provider/model, template digest, prompt-input digest, execution settings, creation timestamp, and state. Every submit/status/cancel request must carry operationId.
+3. Add a small durable server-side operation ledger in SQLite for external-effect metadata only (no credentials and no full email bodies). Include operationId unique, requestHash, operation type, provider/model, chunk ordinal, provider batch/file IDs, provider-visible reconciliation key/name/metadata, state, last error class, attempts, and timestamps. Add a migration and repository with transactions.
+4. Make submit idempotent: same operationId + same requestHash returns/reconciles the existing operation; same operationId + different hash returns 409. Persist a pre-call intent before each remote create and persist the provider receipt immediately after each successful create before attempting the next chunk.
+5. Use provider-supported idempotency primitives where available. Where a create endpoint has no idempotency primitive, put operationId and chunk ordinal into provider-visible metadata/name/file identity and implement a provider-specific lookup/reconciliation path. Never automatically resubmit an ambiguous chunk merely because a response was lost.
+6. Return partial submission state and all durable successful chunk receipts even when a later chunk fails. Do not turn a partial external success into a generic thrown error that hides receipts. The browser must atomically merge receipts and display an actionable reconciliation state.
+7. Separate submit failures from monitor failures. A status poll error, timeout, 429/5xx, missing credential, server restart, or temporary provider parse error is nonterminal. Preserve running placeholders, use capped exponential backoff with jitter, display the cause and next retry, and resume after credential restoration. Only a verified terminal provider status can terminally fail unresolved results.
+8. Resume and reconcile every active provider operation, not just one. Bound concurrent polling and avoid thundering herds. An operation that cannot be reconciled must remain visibly ambiguous with provider IDs and instructions; block a new same-scope submit until the user explicitly resolves it.
+9. Add a browser-wide lease using navigator.locks when available plus BroadcastChannel for status propagation. Provide an IndexedDB lease fallback with owner tab ID, operation ID, heartbeat, expiry, and compare-and-swap revision. Processing, provider-batch monitoring/cancel, restore, and retry must respect the lease. A non-owner tab is read-only for the active scope and can observe progress. Takeover requires expiry followed by provider reconciliation.
+10. Add optimistic revisions to job/result writes touched by recovery so a stale tab cannot overwrite a newer terminal state.
+11. Add deadlines and AbortSignals to every provider batch HTTP request. Integrate a global shutdown AbortController: stop new submissions, checkpoint state, finish or safely abort bounded work, flush logs, and close SQLite. Shutdown must be idempotent.
+
+Compatibility and safety constraints
+- Preserve the existing browser-owned data model for ordinary content. The server ledger stores only the minimum external-effect journal needed to guarantee recovery.
+- Do not persist credentials, authorization headers, full prompts, research content, or generated email bodies in the server ledger or logs.
+- Preserve current provider adapters and public API behavior where safe; version changed payloads explicitly.
+- Never claim exactly-once delivery when a provider lacks the necessary primitive. Expose “at-most-once after reconciliation” or “ambiguous” honestly.
+- Keep Standard API behavior functional, but route its same-scope duplicate guard through the browser lease.
+
+Tests to add before considering the change complete
+- Unit-test every legal/illegal state transition and idempotency hash conflict.
+- Fault-inject after pre-call ledger write, after provider accepts a chunk but before receipt write, after receipt write but before HTTP response, after chunk 1 of 2, during first poll, while reading output, during cancel, and during shutdown.
+- Restart the server at every fault point and prove the operation is discovered/reconciled without an automatic duplicate.
+- Remove and restore credentials during monitoring; state must become awaiting-credential then resume.
+- Return 429 with delta-seconds and HTTP-date Retry-After, repeated 5xx, malformed JSON, and a hanging body; verify capped backoff/deadlines.
+- Open two Playwright contexts with the same persistent browser profile and race Process, Retry, and Cancel. Assert one submit call, one operationId, visible ownership in both tabs, and safe takeover after simulated owner death.
+- Create two active operations and reload; both must resume under bounded polling.
+- Assert logs and the ledger contain no credential or full-content material.
+
+Acceptance criteria
+- For every injected failure, the number of provider-created chunks equals the intended unique chunk count and never increases merely because the client retries.
+- Local state never says terminal failed while a known provider chunk is nonterminal.
+- Every known remote provider ID is discoverable from the operation ledger and surfaced in diagnostics.
+- A same-scope second tab cannot create external work.
+- All new and existing lint, format, unit, integration, security, and provider-batch E2E commands exit zero.
+
+Deliverables
+- Code and migrations, state-machine documentation, a short recovery runbook, provider-specific reconciliation notes, tests, and an updated architecture diagram showing the browser lease and minimal server operation ledger.
+- In your final response, list changed files, schema/API changes, fault cases proven, commands run with exit codes, and any provider limitation that still leaves an ambiguity window.</pre>
+        </details>
+
+        <details class="prompt-card">
+          <summary>Prompt 2 — Research browser SSRF, sandbox, and resource-budget hardening</summary>
+          <div class="prompt-actions">
+            <span>Solves R3 and the research portion of R5/R9</span
+            ><button class="copy" type="button">Copy prompt</button>
+          </div>
+          <pre class="prompt">
+Act as a security engineer specializing in SSRF and hostile-browser isolation. Redesign the research fetch path so imported, redirected, and subresource URLs are treated as adversarial and cannot access private networks, disable containment, or consume unbounded resources.
+
+Observed evidence
+- src/research/websiteFetcher.js resolves a hostname with Node, then lets Chromium independently resolve/connect. The route handler caches the validation promise by origin, creating a DNS-rebinding/time-of-check-time-of-use gap.
+- Chromium is launched with --no-sandbox, JavaScript enabled, ignoreHTTPSErrors true, and broad public-origin script/XHR access.
+- responseBytes is enforced only after page.content(), after the browser has downloaded/rendered the document. Total subresource bytes, sockets, CPU, and memory are not bounded.
+- collectResearch may launch one browser for the primary page and one for each of up to three contact pages per record. Provider batch preparation can repeat this across many records.
+- BatchSubmitSchema permits 50,000 records although configured import support is 1,000.
+
+Required changes
+1. Write a concise threat model covering direct IPs, DNS rebinding, CNAME/redirect chains, IPv4-mapped IPv6, link-local metadata, localhost aliases, wildcard DNS, proxy environment variables, malicious TLS, service workers, websocket/WebRTC, downloads, data/blob/file schemes, browser exploits, and decompression/resource exhaustion.
+2. Replace separate validate-then-browser-resolve behavior with connect-time enforcement. Preferred architecture: route all Chromium HTTP(S) traffic through a local controlled proxy/resolver that resolves each hostname, rejects any answer in blocked ranges, pins the chosen public address for that connection while preserving Host/SNI certificate validation, revalidates every redirect/new socket, and records the actual remote IP. If you choose a different architecture, prove it closes the same TOCTOU gap.
+3. Reject a host if any DNS answer is blocked; normalize and classify IPv4, IPv6, IPv4-mapped IPv6, decimal/octal/hex and Unicode hostname edge cases. Bound DNS answers, CNAME depth, lookup time, redirect count, and origin count. Do not trust system proxy settings unless explicitly validated.
+4. Remove --no-sandbox. Use the platform browser sandbox and fail closed with a clear configuration error if safe containment cannot start. Set ignoreHTTPSErrors false. Use a dedicated ephemeral browser user-data directory/context, no stored credentials, no permissions, no downloads, no clipboard, no geolocation, no camera/microphone, no WebRTC local-IP discovery, no extensions, and blocked service workers.
+5. Minimize active content. If research quality permits, disable JavaScript by default and make rendered-JS mode an explicit bounded fallback. In rendered mode, block websocket/eventsource, downloads, navigation outside policy, and unnecessary resource types; limit scripts/XHR to justified same-site origins or a small bounded set. Treat browser output as tainted regardless.
+6. Enforce limits while streaming, before allocation: compressed and decompressed bytes per response, total bytes per page, total bytes per record, number of requests/origins/redirects, wall time, idle time, DOM size, extracted text, and concurrent contexts. Abort immediately at the limit. Never call response.text() or page.content() on an unbounded body.
+7. Replace launch-per-page behavior with a bounded browser pool only if isolation remains strong: a fresh context per page/record, strict teardown in finally, process health checks, maximum pages per process, and kill/recycle on timeout or budget violation. No orphan process may survive a job.
+8. Enforce context.config.limits.records at the gateway batch API and a much smaller explicit research record/page concurrency budget. Validate record field count, field bytes, nesting depth, website length, and research depth with shared schemas.
+9. Add structured, redacted security telemetry: requested host, normalized host, resolved/connected IP classification, redirects, blocked reason, bytes, request count, duration, and teardown outcome. Never log query secrets, page bodies, prompts, credentials, or full email content.
+10. Update SECURITY.md, PERFORMANCE.md, .env.example, and the UI so disabled/degraded research is explicit and does not imply completion.
+
+Required adversarial tests
+- A deterministic DNS resolver fixture returns public on validation and private on connection; verify the private listener sees zero requests.
+- Cover 127/8, 0/8, RFC1918, link-local metadata, multicast, reserved, unique-local IPv6, IPv4-mapped IPv6, localhost with trailing dot/case, alternate IP encodings, CNAME to private, mixed public/private answers, and redirect public→private→public.
+- Test a valid public page whose script fetches a private URL, opens websocket/EventSource, registers a service worker, triggers a download, creates a blob/file navigation, and attempts WebRTC discovery. All disallowed actions must be blocked.
+- Stream a never-ending body, a compressed bomb, a huge script/XHR, an infinite redirect, endless JavaScript, and a page that spawns many requests. Verify byte/time/request budgets, bounded RSS/event-loop lag, and forced teardown.
+- Run maximum supported research concurrency and prove it stays within documented CPU/RAM/process budgets.
+- Ensure normal public HTML, allowed same-site contact pages, and no-JS fallback still produce useful text/contact candidates.
+
+Acceptance criteria
+- No test request reaches a blocked listener, including DNS-rebinding and browser subresources.
+- The launched browser is sandboxed and strict-TLS; unsafe startup fails closed.
+- All resource limits are enforced during transfer/execution, not after complete allocation.
+- Research failure is per-record, explicit, and cannot crash or indefinitely occupy the gateway.
+- Security, unit, integration, performance, and browser E2E commands exit zero.
+
+Deliver a design note first, then implementation, tests, measured resource results, and a residual-risk statement. Do not weaken the private-network policy merely to make a fixture pass.</pre>
+        </details>
+
+        <details class="prompt-card">
+          <summary>
+            Prompt 3 — Resend eligibility, exact confirmation, partial receipts, and compliance evidence
+          </summary>
+          <div class="prompt-actions">
+            <span>Solves R4 and Resend-specific R2/R9</span
+            ><button class="copy" type="button">Copy prompt</button>
+          </div>
+          <pre class="prompt">
+Act as a senior engineer for safety-critical email delivery. Make the Resend workflow auditable and recoverable so final confirmation applies to the exact messages and current eligibility state, partial successes are never lost, and retries cannot create accidental duplicates.
+
+Observed defects
+- public/app.js reads suppressions during preflight, stores items/suppressions in state.resendPreflight, and reuses that snapshot at final Send. Suppressions, consent, recipient, content, or settings can change while the dialog is open.
+- Test-recipient mode replaces the recipient on a record while retaining that record's consent evidence, so the evidence does not establish permission for the configured test address.
+- src/resend/resendGateway.js sends batches sequentially. If a later batch fails, the endpoint throws and earlier successful receipts are not returned or persisted by the browser.
+- idempotencyKeyFor hashes only sorted result IDs and From address. It does not bind operation, chunk, recipient, subject, HTML/text digest, or intentional-resend semantics.
+- Bulk companyAddress is checked only for a non-empty value. The server does not prove the canonical HTML contains the postal identification. A setting added after generation can pass while the message still lacks it.
+- Retry-After handling treats only numeric seconds and does not cap provider-controlled sleep.
+- Resend request bodies do not use strict Zod schemas or explicit recipient/content maxima.
+
+Required design and implementation
+1. Model a send operation before the confirmation dialog opens. Persist operationId, createdAt/expiresAt, project/result revisions, exact recipient, contact source, independently valid consent evidence identifiers/timestamps, suppression revision, sender, subject, sanitized HTML/text digests, unsubscribe target digest, and per-message stable IDs. Never include a raw credential.
+2. Make preflight return a short-lived confirmation token/digest bound to the complete canonical send plan. The dialog must show recipient count, exclusions by reason, sender, test-mode state, content revision, suppression revision, and expiration. Any edit, recipient/contact change, consent/suppression change, sender/config change, delivery event, or expiration invalidates confirmation and requires a new preflight.
+3. On final click, acquire the browser-wide delivery lease and open a fresh IndexedDB read transaction for results, suppressions, consent evidence, and relevant settings. Rebuild and compare the exact plan. Also merge any authoritative server-side suppression/webhook state. Refuse send on any revision/digest mismatch; never silently update the plan behind a checked confirmation box.
+4. Define test-recipient mode separately. Require the configured test address to be explicitly marked as a controlled test inbox and confirmed independently. Do not reuse a prospect's opt-in evidence to authorize another address. Clearly stamp test mode and prevent mixed test/real recipients.
+5. Reuse the durable external-operation ledger from Prompt 1 for send operations. Send one durable chunk at a time: persist intent, call Resend with an idempotency key, persist every returned receipt immediately, then continue. If a later chunk fails, return/persist partial status and resume only unresolved chunks.
+6. Derive idempotency keys from operationId + chunk ordinal + a stable digest of ordered message IDs/recipients/subject/HTML/text/from/unsubscribe target. The same operation retry must be identical; a changed plan is 409. A deliberate resend creates a new operation and requires fresh preflight/confirmation while linking to the prior operation for audit.
+7. Handle the response-lost window using Resend's supported idempotency/retrieval primitives and the ledger. If the result cannot be proven, show ambiguous and reconcile; do not blindly generate a new key.
+8. Guarantee compliance content in the canonical pipeline. For bulk messages, either inject the configured postal identification and a visible unsubscribe link into the exact sanitized final HTML/text before the digest is computed, or validate their exact presence. Use recipient-specific opaque unsubscribe URLs where required. Keep List-Unsubscribe and List-Unsubscribe-Post headers aligned with the visible URL and verify the endpoint contract. Do not claim legal compliance automatically; preserve a human policy notice.
+9. Replace permissive bodies with strict schemas: cap items at a documented send maximum, cap every string/body, reject unknown dangerous shapes, validate IDs, sender fields, timestamps, consent types, URL schemes, and duplicate recipients. Apply a separate expensive-route rate/concurrency limit even when the browser token is valid.
+10. Parse Retry-After as delta-seconds or HTTP-date, apply jitter, cap the delay and total retry window, honor AbortSignal/shutdown, and report retry state. Bound response bodies before parsing.
+11. Persist a tamper-evident audit record sufficient to answer who/what/when: operation ID, digests, consent/suppression revision, confirmation time, chunk attempts, idempotency keys, provider IDs/status, exclusions, and final reconciliation. Do not persist provider credentials or unnecessary message bodies server-side.
+
+Tests
+- Add a suppression and revoke consent after preflight but before final click; send must be blocked and confirmation invalidated.
+- Edit subject/HTML, switch primary contact, change sender/address/unsubscribe, or let token expire after preflight; all must require re-preflight.
+- Use an unconfirmed arbitrary test address with an opted-in prospect; it must be rejected. A separately confirmed controlled test inbox succeeds only in isolated test mode.
+- Fail chunk 2 after chunk 1 succeeds, lose the HTTP response after provider acceptance, restart browser/server, retry, and reconcile. Assert one provider message per intended recipient and durable receipts for every success.
+- Change a result and intentionally resend. The old operation cannot be reused; a new operation plus fresh confirmation succeeds with a new audit link.
+- Test duplicate recipients, stale webhook suppression, malformed consent time, empty/whitespace postal address, postal address absent from message, invalid one-click URL, 429 numeric/date/huge Retry-After, 5xx, malformed/oversized body, timeout, and shutdown.
+- Race two tabs clicking Send. Only the lease owner can call the gateway; server operation idempotency is a second barrier.
+
+Acceptance criteria
+- Final send is cryptographically/deterministically bound to the exact reviewed plan and fresh eligibility revision.
+- A newly suppressed or revoked recipient cannot be sent from a stale dialog.
+- Partial provider success is visible and recoverable; response loss/restart does not duplicate.
+- Every sent bulk message contains the required canonical postal/unsubscribe content and has a traceable consent record; test mode cannot borrow evidence.
+- Existing copy/export/manual-contact behavior remains available for ineligible records.
+- All lint, format, unit, integration, security, and Resend E2E/fault tests exit zero.
+
+Deliver code, migrations/state schemas, UI changes, runbook, tests, and a concise residual-compliance disclaimer. Report commands and exit codes in the final response.</pre>
+        </details>
+
+        <details class="prompt-card">
+          <summary>Prompt 4 — Bounded provider I/O, streaming archives, and schema-safe restore</summary>
+          <div class="prompt-actions">
+            <span>Solves R5 + R6 + data-loss portion of R7</span
+            ><button class="copy" type="button">Copy prompt</button>
+          </div>
+          <pre class="prompt">
+Act as a performance and data-integrity engineer. Replace post-allocation checks and synchronous archive operations with bounded streaming/worker designs, enforce one shared limit model at every API boundary, and make backup restore schema- and relationship-safe.
+
+Current evidence
+- Gateway BatchSubmitSchema allows 50,000 records while application configuration documents/supports 1,000.
+- Provider helpers use response.text() without enforcing config.limits.providerResponseBytes while streaming.
+- public/modules/backup.js calls unzipSync before totaling expanded bytes, so the 250 MiB decompression limit is checked after full expansion.
+- Backup data is checked for array shape, nesting depth, and prototype keys, but not versioned per-store schemas, record maxima, key uniqueness, or referential integrity.
+- createBackup and delivery export call zipSync on the main browser thread. OPFS staging happens only after a complete in-memory archive/Blob exists, so it does not prevent compression-time blocking or peak-memory duplication.
+- IndexedDB open failure falls back to temporary memory while external paid actions remain enabled.
+
+Required work
+1. Create one versioned limits module shared by configuration, Zod schemas, import normalization, provider gateway, backup/restore, export, UI labels, and tests. Enforce record count, fields/record, field bytes, nesting depth, prompt bytes, provider compressed/decompressed response bytes, recipient count, archive entries, per-entry bytes, total expanded bytes, compression ratio, filename length, and concurrency. Remove contradictory hard-coded maxima such as 50,000.
+2. Implement a bounded response reader for every provider/model/batch/Resend/search call. Stream chunks, count raw bytes before concatenation, optionally bound decompressed bytes, abort at the configured cap, enforce content type, and use a deadline/AbortSignal. Return a stable safe error without logging the body or credential. Replace all direct unbounded response.text()/json() paths in external-call code.
+3. Move backup creation and delivery ZIP creation off the main thread. Use a Web Worker and streaming ZIP writer; for large artifacts, write directly to OPFS incrementally instead of constructing the entire ZIP then staging it. Expose progress, cancellation, bounded queues/backpressure, and guaranteed cleanup of partial OPFS entries.
+4. Replace unzipSync with a streaming archive reader that enforces compressed size, entry count, safe normalized path, duplicate path rejection, per-entry expanded bytes, total expanded bytes, compression ratio, manifest-first/manifest-bounded behavior, and wall-clock/cancel limits before materializing full entries. Reject encrypted/unsupported archive features explicitly.
+5. Define a Zod (or equivalent) schema per STORE_DEFINITIONS store and per backup version. Validate every record, key path, allowed fields, enum/date/url/value limits, duplicate primary keys, and category count. Validate cross-store references (projectId, recordId, resultId, templateId, addendumId, jobId, artifactId), or define explicit allowed orphan rules. Verify manifest counts/checksums/categories against actual data.
+6. Make restore a two-stage process: inspect/dry-run produces counts, conflicts, migrations, warnings, orphan report, and required space; commit revalidates the immutable inspected digest then performs one transaction. On any failure, prove zero mutation. Replace mode must state exactly which stores it clears. Duplicate mode must use per-store key maps so equal keys in different stores cannot cross-wire relationships.
+7. Add storage headroom checks and actionable quota errors before backup staging/restore. In temporary mode, keep a persistent non-dismissible warning and block paid provider calls, live send, and destructive restore unless the user explicitly acknowledges ephemeral loss for that session. Offer an immediate downloadable backup when data exists and external work is attempted.
+8. Add performance telemetry without content: records, fields, bytes, archive entry counts, compressed/expanded bytes, duration, worker/main-thread long tasks, OPFS/memory mode, cancellation, and peak-memory estimate where available.
+9. Update BROWSER_STORAGE.md, BACKUP_FORMAT.md, PERFORMANCE.md, TROUBLESHOOTING.md, and README so claims match the implementation. In particular, do not claim async ZIP/OPFS memory reduction until compression itself streams off-thread.
+
+Adversarial and performance tests
+- Provider returns content-length above cap, no content-length with oversized chunks, malformed JSON near cap, compressed oversized response, endless stream, slowloris chunks, and wrong content type. Verify early abort and bounded memory.
+- Backup tests: 100 MiB highly compressed bomb, too many entries, duplicate/traversal/Unicode-confusable paths, oversized single entry, bad ratio, manifest count/checksum mismatch, unknown store, malformed record, duplicate key, broken relationship, cyclic/deep object, prototype keys, cancellation, and quota exhaustion.
+- Snapshot every store before failed restore and compare byte-for-byte afterward.
+- Create/export/inspect/restore maximum supported data on Chromium, Firefox, and WebKit. Record wall time, main-thread long tasks, cancellation latency, OPFS cleanup, and memory. Define budgets in tests/docs and fail regressions.
+- Simulate IndexedDB VersionError, blocked upgrade, transaction abort, QuotaExceededError, and eviction; verify persistent degraded UI and external-action guard.
+
+Acceptance criteria
+- No configured maximum can be bypassed by calling a lower-level API directly.
+- No external response or archive is fully allocated before its applicable byte/ratio/time limits are enforced.
+- Maximum supported export does not block the main thread beyond the documented long-task budget and can be canceled/cleaned.
+- Restore rejects malformed/unsafe/inconsistent data before commit and leaves all stores unchanged on failure.
+- Temporary-mode external actions are guarded and loss risk remains visible.
+- All quality, edge, performance, and cross-browser E2E commands exit zero.
+
+Deliver the shared limit map, bounded readers, worker/streaming archive pipeline, versioned schemas/migrations, UI/docs, benchmarks, and tests. In the final response, report before/after peak memory and wall time plus any browser limitation that required a fallback.</pre>
+        </details>
+
+        <details class="prompt-card">
+          <summary>
+            Prompt 5 — Consolidated API security, graceful shutdown, and reliable release gates
+          </summary>
+          <div class="prompt-actions">
+            <span>Solves R8 + remaining R9 + R10</span><button class="copy" type="button">Copy prompt</button>
+          </div>
+          <pre class="prompt">
+Act as the release owner for the Express gateway and test system. Consolidate the API security contract, remove or isolate legacy mutations, make shutdown deterministic, and make the documented release gate trustworthy on Windows/OneDrive and CI.
+
+Observed evidence
+- Modern /api/gateway/* mutations call context.requireGatewayRequest; multiple legacy /records, /jobs, /results, regeneration/export, and /models/sync mutations do not.
+- Origin middleware permits requests without Origin and there is no explicit loopback Host-header check. Default loopback bind is good, but the route contract is inconsistent and public-bind misconfiguration is not fail-fast.
+- Some mutable/expensive routes have permissive request bodies or route-specific validation rather than one policy.
+- Requests with the correct browser token skip the general rate limiter entirely, including potentially expensive/log-heavy operations.
+- server.js clears credentials immediately during shutdown and force-exits after eight seconds; force exit can bypass DB/logger close. Shutdown is not guarded against duplicate signals.
+- npm run lint passes. npm run format:check fails for config/providers.config.js, public/modules/emailPipeline.js, public/modules/logger.js, and tests/regression/editorPanelsRegression.test.js.
+- npm test executes 44 files and 158 passing assertions but exits 1 because Vitest reports a forks-runner startup timeout and worker termination timeouts. The security subset passes 3/3. The secret scan passes and npm audit reports zero known vulnerabilities.
+
+Required API/security work
+1. Inventory every route and classify it read-only, unsafe local mutation, expensive external operation, signed webhook, static asset, or legacy compatibility. Publish the table in SECURITY.md/ARCHITECTURE.md.
+2. Remove browser-unused legacy routes if migration compatibility no longer needs them. If retained, mount them under an explicit legacy prefix, disable by default, and apply the same authentication/authorization/validation limits. Do not leave a second mutable contract accidentally exposed.
+3. Implement global middleware for every unsafe HTTP method under /api: require exact loopback Host/hostname and supported scheme, validate Origin when present, require the browser request token, reject unexpected content types, and use constant-time token comparison. The signed Resend webhook is the explicit exception and must verify signature against raw bounded bytes before JSON mutation. Document CLI/non-browser access behavior.
+4. Fail startup if HOST is not loopback unless an explicit unsupported-public-mode acknowledgement is set. Even then, refuse to claim security; require an authenticated TLS reverse proxy configuration and do not weaken loopback defaults.
+5. Apply strict Zod schemas and config-derived maxima to every route. Reject unknown fields where practical. Normalize validation errors without exposing secret/body detail.
+6. Keep a baseline limiter for all traffic; do not completely skip trusted-token requests. Add per-route concurrency and cost budgets for generation, research, batch submit/status, send, sync, export, and client logs. Return Retry-After and stable errors. Ensure logger ingestion cannot fill disk faster than rotation/limits.
+7. Add security tests for missing/wrong/duplicate CSRF header, absent/spoofed/null Origin, attacker Host, DNS-rebinding Host, content-type confusion, method override, oversized/nested bodies, trusted-token rate abuse, public bind, and webhook exception. Verify no external provider call or SQLite mutation occurs on rejection.
+
+Required shutdown/operations work
+8. Add an idempotent shutdown coordinator. On first signal: mark not-ready, stop accepting new operations, clear scheduled timers, abort or checkpoint in-flight operations through a shared AbortController, wait a configurable bounded drain, flush/close logger, close SQLite, then exit. A second signal may shorten the drain but must still attempt final flush. Set and test server request/header/keepalive timeouts explicitly.
+9. Do not clear credentials until in-flight operations that legitimately need them are checkpointed/aborted. Never log credential values. On next start, list unresolved durable operations and reconciliation actions.
+10. Handle unhandledRejection according to a documented fatality policy. A rejected promise that may corrupt operation coordination should make the process unready and shut down safely, not merely log and continue indefinitely.
+
+Required release-gate work
+11. Fix the four formatting failures without changing behavior. Preserve unrelated user changes and do not run broad destructive rewrites beyond the named formatting scope unless the diff is reviewed.
+12. Diagnose Vitest pool startup/termination failure. Capture open handles/processes and determine whether OneDrive hydration, excessive fork parallelism, lingering browser/logger/SQLite handles, or the configured pool is responsible. Prefer a stable repository configuration (for example bounded workers/pool choice and explicit teardown) over merely increasing a timeout. The command must exit zero twice consecutively.
+13. Add a single verify script that runs, with clear fail-fast summaries: format:check, lint, unit/integration/edge/regression/security tests, critical fault-injection tests, Playwright Chromium/Firefox/WebKit, secret scan, npm audit, and clean generated-artifact check. Ensure test mode never makes paid calls and uses isolated temporary storage/ports.
+14. Run verification from a clean clone outside and inside a OneDrive-backed path on the supported Node/npm versions. Record command durations, exit codes, flakes/retries (retries should be zero for deterministic suites), and generated files. CI must judge exit codes, unhandled errors, console/page errors, open handles, and assertion failures.
+15. Add a release checklist with clean/expected worktree state, migration/backup rehearsal, rollback version, credential rotation guidance, operation-ledger reconciliation, supported browser matrix, and signed/tagged version evidence.
+
+Acceptance criteria
+- Every unsafe route is protected by one tested policy or is a documented signed-webhook exception; unused legacy mutations are absent/disabled.
+- Non-loopback/public misconfiguration fails closed.
+- Expensive trusted requests remain bounded by concurrency/rate/cost controls.
+- SIGINT/SIGTERM during each external-operation phase produces a bounded, flushed, reconcilable shutdown and no hidden duplicate.
+- npm run format:check and npm run lint pass.
+- npm test exits 0 twice with no unhandled pool errors or worker timeouts; security, E2E, secret scan, and audit also exit 0.
+- The verify script passes from a clean supported environment and leaves no unexplained tracked/untracked artifacts.
+
+Deliver route inventory, middleware/refactor, shutdown coordinator, test-runner diagnosis and configuration, verify script/CI changes, documentation, and exact command/exit-code evidence. Do not call a release green if assertions pass but the process exits nonzero.</pre>
+        </details>
+      </section>
+
+      <section id="verification">
+        <div class="section-head">
+          <span class="section-no">08 / EVIDENCE</span>
+          <div>
+            <h2>Verification record and limitations</h2>
+            <p>Results are from the local working tree on 21 July 2026 (America/Chicago).</p>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Command / review</th>
+                <th>Result</th>
+                <th>Interpretation</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>npm run lint</code></td>
+                <td><span class="risk-pill" style="border-color: var(--green)">PASS · exit 0</span></td>
+                <td>ESLint completed without reported findings.</td>
+              </tr>
+              <tr>
+                <td><code>npm run format:check</code></td>
+                <td><span class="risk-pill high">FAIL · exit 1</span></td>
+                <td>
+                  Prettier reports four files: providers.config.js, emailPipeline.js, logger.js,
+                  editorPanelsRegression.test.js.
+                </td>
+              </tr>
+              <tr>
+                <td><code>npm test</code></td>
+                <td><span class="risk-pill high">FAIL · exit 1</span></td>
+                <td>
+                  44 files and 158 tests passed, but Vitest emitted one unhandled forks-runner startup timeout
+                  plus five worker termination timeouts.
+                </td>
+              </tr>
+              <tr>
+                <td><code>npm run test:security</code></td>
+                <td><span class="risk-pill" style="border-color: var(--green)">PASS · exit 0</span></td>
+                <td>
+                  1 file / 3 tests passed; coverage is narrow and does not include DNS rebinding or browser
+                  containment.
+                </td>
+              </tr>
+              <tr>
+                <td><code>npm run scan:secrets</code></td>
+                <td><span class="risk-pill" style="border-color: var(--green)">PASS · exit 0</span></td>
+                <td>No committed secret patterns detected; <code>.env</code> is not tracked.</td>
+              </tr>
+              <tr>
+                <td><code>npm audit --audit-level=low</code></td>
+                <td><span class="risk-pill" style="border-color: var(--green)">PASS · exit 0</span></td>
+                <td>
+                  Registry audit reported zero known vulnerabilities at review time; this does not address
+                  application logic.
+                </td>
+              </tr>
+              <tr>
+                <td>Static architecture/security review</td>
+                <td><span class="risk-pill medium">10 scenarios</span></td>
+                <td>
+                  Reviewed client orchestration, gateway routes/middleware, batches, Resend, research,
+                  storage/backup, shutdown, tests, and docs.
+                </td>
+              </tr>
+              <tr>
+                <td>Full Playwright suite</td>
+                <td><span class="risk-pill medium">Not executed</span></td>
+                <td>
+                  Existing test was inspected; report does not claim current cross-browser E2E pass status.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="note" style="margin-top: 16px">
+          <strong>Interpretation limit.</strong> This is a premortem, not a penetration test or legal opinion.
+          Critical R1/R2/R4 are direct control-flow findings; R3 is a credible security design failure
+          requiring adversarial reproduction in an isolated lab. Scores should be revisited after fault tests
+          and operational usage data exist.
+        </div>
+
+        <div class="grid two" style="margin-top: 16px">
+          <article class="card">
+            <h3>Working-tree caution</h3>
+            <p>
+              The repository contained many modified and untracked files before this report was added.
+              Findings and line references describe that local state, not necessarily the last commit.
+              Preserve the current tree and establish a reviewed baseline before applying the prompts.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Highest-value next test</h3>
+            <p>
+              Fault-inject a network error immediately after a provider accepts chunk 1, then reload and retry
+              from a second tab. That single exercise crosses the three highest engineering risks: orphaned
+              external effect, false terminal state, and absent cross-tab exclusion.
+            </p>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="shell">
+        <strong>AI Batch Personalizer 2.0 premortem</strong><br />
+        Prepared from local source and test evidence · 2026-07-21 · America/Chicago
+      </div>
+    </footer>
+
+    <script>
+      for (const button of document.querySelectorAll("button.copy")) {
+        button.addEventListener("click", async () => {
+          const prompt = button.closest("details")?.querySelector("pre.prompt")?.textContent ?? "";
+          try {
+            await navigator.clipboard.writeText(prompt);
+            button.textContent = "Copied";
+          } catch {
+            const range = document.createRange();
+            range.selectNodeContents(button.closest("details").querySelector("pre.prompt"));
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+            button.textContent = "Selected";
+          }
+          window.setTimeout(() => (button.textContent = "Copy prompt"), 1600);
+        });
+      }
+    </script>
+  </body>
+</html>

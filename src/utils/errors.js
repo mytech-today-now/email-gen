@@ -9,6 +9,16 @@ export class AppError extends Error {
   }
 }
 
+export function createShutdownError(reason = "shutdown", phase = "DRAINING") {
+  return new AppError(
+    "SERVER_SHUTTING_DOWN",
+    "The server is shutting down and is not accepting new mutable work.",
+    503,
+    { reason, phase },
+    { publicDetails: true }
+  );
+}
+
 export function isAppError(error) {
   return error instanceof AppError;
 }

@@ -22,6 +22,11 @@ export function errorHandler({ logger, config }) {
         };
 
     logger.error({ err: error, requestId, route: req.originalUrl }, "Request failed");
+    if (Number.isFinite(Number(error.retryAfter)) && Number(error.retryAfter) > 0) {
+      res.setHeader("Retry-After", String(Math.ceil(Number(error.retryAfter))));
+    } else if (Number.isFinite(Number(error.retryAfterMs)) && Number(error.retryAfterMs) > 0) {
+      res.setHeader("Retry-After", String(Math.ceil(Number(error.retryAfterMs) / 1000)));
+    }
     res.status(safe.status).json(safe.body);
   };
 }

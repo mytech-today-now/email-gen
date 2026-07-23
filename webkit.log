@@ -1,0 +1,161 @@
+
+Running 33 tests using 1 worker
+
+[1/33] [webkit] › tests\e2e\app.spec.js:79:1 › catalog-only selection, dynamic columns, and all split panes are keyboard operable
+  1) [webkit] › tests\e2e\app.spec.js:79:1 › catalog-only selection, dynamic columns, and all split panes are keyboard operable 
+
+    Test timeout of 90000ms exceeded.
+
+    Error Context: test-results\app-catalog-only-selection-89d62-panes-are-keyboard-operable-webkit\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\app-catalog-only-selection-89d62-panes-are-keyboard-operable-webkit\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\app-catalog-only-selection-89d62-panes-are-keyboard-operable-webkit\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[2/33] [webkit] › tests\e2e\app.spec.js:103:1 › complete browser-persistent mock workflow and real completed ZIP download
+
+[webkit] › tests\e2e\app.spec.js:103:1 › complete browser-persistent mock workflow and real completed ZIP download
+Browser page error: Importing a module script failed.
+  2) [webkit] › tests\e2e\app.spec.js:103:1 › complete browser-persistent mock workflow and real completed ZIP download 
+
+    Test timeout of 270000ms exceeded.
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: getByTestId('status-line')
+    Expected pattern: /durable storage verified|temporary in-memory storage active|recovery required/
+    Received string:  "Starting…"
+    Timeout: 30000ms
+
+    Call log:
+      - Expect "toContainText" with timeout 30000ms
+      - waiting for getByTestId('status-line')
+        46 × locator resolved to <p id="statusLine" aria-live="polite" class="status-line" data-testid="status-line">Starting…</p>
+           - unexpected value "Starting…"
+
+
+      4 |
+      5 | async function dismissWalkthrough(page) {
+    > 6 |   await expect(page.getByTestId("status-line")).toContainText(
+        |                                                 ^
+      7 |     /durable storage verified|temporary in-memory storage active|recovery required/,
+      8 |     {
+      9 |       timeout: 30_000
+        at dismissWalkthrough (C:\Users\kyle_\OneDrive\Documents\email-gen\tests\e2e\app.spec.js:6:49)
+        at C:\Users\kyle_\OneDrive\Documents\email-gen\tests\e2e\app.spec.js:170:9
+
+    Error Context: test-results\app-complete-browser-persi-fb420-real-completed-ZIP-download-webkit\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\app-complete-browser-persi-fb420-real-completed-ZIP-download-webkit\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\app-complete-browser-persi-fb420-real-completed-ZIP-download-webkit\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[3/33] [webkit] › tests\e2e\app.spec.js:174:1 › raw and rendered editor panels resize, persist, and recover from malformed HTML
+[webkit] › tests\e2e\app.spec.js:174:1 › raw and rendered editor panels resize, persist, and recover from malformed HTML
+
+Browser page error: /127.0.0.1:3200/api/client-logs due to access control checks.
+
+Browser page error: /127.0.0.1:3200/api/client-logs due to access control checks.
+
+Browser page error: /127.0.0.1:3200/api/client-logs due to access control checks.
+[4/33] [webkit] › tests\e2e\app.spec.js:286:1 › Export Completed download contains standalone HTML contact actions
+  3) [webkit] › tests\e2e\app.spec.js:286:1 › Export Completed download contains standalone HTML contact actions 
+
+    Test timeout of 90000ms exceeded while running "beforeEach" hook.
+
+      71 | }
+      72 |
+    > 73 | test.beforeEach(async ({ page }) => {
+         |      ^
+      74 |   page.on("pageerror", (error) => console.error(`Browser page error: ${error.message}`));
+      75 |   await page.goto("/");
+      76 |   await dismissWalkthrough(page);
+        at C:\Users\kyle_\OneDrive\Documents\email-gen\tests\e2e\app.spec.js:73:6
+
+    Error Context: test-results\app-Export-Completed-downl-c3244-dalone-HTML-contact-actions-webkit\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\app-Export-Completed-downl-c3244-dalone-HTML-contact-actions-webkit\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\app-Export-Completed-downl-c3244-dalone-HTML-contact-actions-webkit\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[5/33] [webkit] › tests\e2e\app.spec.js:309:1 › template CRUD, configuration backup, and accessibility smoke
+  4) [webkit] › tests\e2e\app.spec.js:309:1 › template CRUD, configuration backup, and accessibility smoke 
+
+    Error: page.evaluate: Target page, context or browser has been closed
+    Browser logs:
+
+    <launching> C:\Users\kyle_\AppData\Local\ms-playwright\webkit-2311\Playwright.exe --inspector-pipe --disable-accelerated-compositing --headless --no-startup-window
+    <launched> pid=741736
+     Please check out https://github.com/dequelabs/axe-core-npm/blob/develop/packages/playwright/error-handling.md
+
+      335 |   await page.locator("#configurationCloseButton").click();
+      336 |
+    > 337 |   const results = await new AxeBuilder({ page }).exclude("#visualEditorHost").analyze();
+          |                   ^
+      338 |   expect(results.violations).toEqual([]);
+      339 | });
+      340 |
+        at AxeBuilder.analyze (C:\Users\kyle_\OneDrive\Documents\email-gen\node_modules\@axe-core\playwright\dist\index.mjs:218:13)
+        at C:\Users\kyle_\OneDrive\Documents\email-gen\tests\e2e\app.spec.js:337:19
+
+    Error Context: test-results\app-template-CRUD-configur-82134-kup-and-accessibility-smoke-webkit\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\app-template-CRUD-configur-82134-kup-and-accessibility-smoke-webkit\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\app-template-CRUD-configur-82134-kup-and-accessibility-smoke-webkit\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[6/33] [webkit] › tests\e2e\multi-tab.spec.js:65:1 › simultaneous tabs share one blocking operation state and stay blocked after reload
+[7/33] [webkit] › tests\e2e\provider-batch.spec.js:44:1 › provider-batch processing survives reload and completes in the browser flow
+[8/33] [webkit] › tests\e2e\responsive-layout.spec.js:30:5 › responsive layout › keeps controls visible at 8K landscape
+[9/33] [webkit] › tests\e2e\responsive-layout.spec.js:30:5 › responsive layout › keeps controls visible at 4K landscape
+[10/33] [webkit] › tests\e2e\responsive-layout.spec.js:30:5 › responsive layout › keeps controls visible at 2K landscape
+[11/33] [webkit] › tests\e2e\responsive-layout.spec.js:30:5 › responsive layout › keeps controls visible at 1028 landscape
+[12/33] [webkit] › tests\e2e\responsive-layout.spec.js:30:5 › responsive layout › keeps controls visible at 1028 portrait
+[13/33] [webkit] › tests\e2e\responsive-layout.spec.js:30:5 › responsive layout › keeps controls visible at 720 landscape
+[14/33] [webkit] › tests\e2e\responsive-layout.spec.js:30:5 › responsive layout › keeps controls visible at 720 portrait
+[15/33] [webkit] › tests\e2e\responsive-layout.spec.js:30:5 › responsive layout › keeps controls visible at 640 landscape
+[16/33] [webkit] › tests\e2e\responsive-layout.spec.js:30:5 › responsive layout › keeps controls visible at 640 portrait
+[17/33] [webkit] › tests\e2e\responsive-layout.spec.js:30:5 › responsive layout › keeps controls visible at 512 square
+[18/33] [webkit] › tests\e2e\responsive-layout.spec.js:30:5 › responsive layout › keeps controls visible at 480 phone
+[19/33] [webkit] › tests\e2e\responsive-layout.spec.js:30:5 › responsive layout › keeps controls visible at 480 landscape
+[20/33] [webkit] › tests\e2e\responsive-layout.spec.js:30:5 › responsive layout › keeps controls visible at NTSC
+[21/33] [webkit] › tests\e2e\responsive-layout.spec.js:30:5 › responsive layout › keeps controls visible at PAL
+[22/33] [webkit] › tests\e2e\responsive-layout.spec.js:30:5 › responsive layout › keeps controls visible at tablet portrait
+[23/33] [webkit] › tests\e2e\responsive-layout.spec.js:30:5 › responsive layout › keeps controls visible at tablet landscape
+[24/33] [webkit] › tests\e2e\responsive-layout.spec.js:30:5 › responsive layout › keeps controls visible at cell phone portrait
+[25/33] [webkit] › tests\e2e\responsive-layout.spec.js:30:5 › responsive layout › keeps controls visible at cell phone landscape
+[26/33] [webkit] › tests\e2e\responsive-layout.spec.js:30:5 › responsive layout › keeps controls visible at iPhone portrait
+[27/33] [webkit] › tests\e2e\responsive-layout.spec.js:30:5 › responsive layout › keeps controls visible at iPhone landscape
+[28/33] [webkit] › tests\e2e\live-credentials.spec.js:110:3 › @live configures, validates, uses, and clears openai through the real UI
+[29/33] [webkit] › tests\e2e\live-credentials.spec.js:110:3 › @live configures, validates, uses, and clears anthropic through the real UI
+[30/33] [webkit] › tests\e2e\live-credentials.spec.js:110:3 › @live configures, validates, uses, and clears xai through the real UI
+[31/33] [webkit] › tests\e2e\live-credentials.spec.js:110:3 › @live configures, validates, uses, and clears venice through the real UI
+[32/33] [webkit] › tests\e2e\live-credentials.spec.js:136:1 › @live configures and clears Luma AI through the UI without starting paid generation
+[33/33] [webkit] › tests\e2e\live-credentials.spec.js:149:1 › @live configures, validates, uses, and clears a custom OpenAI-compatible provider through the real UI
+  4 failed
+    [webkit] › tests\e2e\app.spec.js:79:1 › catalog-only selection, dynamic columns, and all split panes are keyboard operable 
+    [webkit] › tests\e2e\app.spec.js:103:1 › complete browser-persistent mock workflow and real completed ZIP download 
+    [webkit] › tests\e2e\app.spec.js:286:1 › Export Completed download contains standalone HTML contact actions 
+    [webkit] › tests\e2e\app.spec.js:309:1 › template CRUD, configuration backup, and accessibility smoke 
+  26 skipped
+  3 passed (22.3m)

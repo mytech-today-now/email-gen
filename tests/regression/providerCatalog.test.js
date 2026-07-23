@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { loadAppConfig } from "../../config/app.config.js";
 import { loadProviderConfig, publicProviderConfig } from "../../config/providers.config.js";
 import { createProviderRegistry } from "../../src/ai/providerRegistry.js";
+import { createRuntimeCredentialManager } from "../../src/security/runtimeCredentialManager.js";
 
 const envKeys = [
   "AI_MOCK",
@@ -14,8 +15,7 @@ const envKeys = [
   "ENABLED_CUSTOM_MODELS",
   "ENABLED_MOCK_MODELS",
   "CUSTOM_PROVIDER_BASE_URL",
-  "AI_CUSTOM_PROVIDER_TYPE",
-  "OPENAI_API_KEY"
+  "AI_CUSTOM_PROVIDER_TYPE"
 ];
 const allProviders = "openai,anthropic,xai,venice,lumaai,custom,mock";
 let previousEnv;
@@ -41,7 +41,6 @@ beforeEach(() => {
   process.env.AI_MOCK = "true";
   process.env.ENABLED_AI_PROVIDERS = allProviders;
   process.env.CUSTOM_PROVIDER_BASE_URL = "http://127.0.0.1:9999/v1";
-  process.env.OPENAI_API_KEY = "sk-regression-secret";
   for (const key of envKeys.filter(
     (item) => item.startsWith("ENABLED_") && item !== "ENABLED_AI_PROVIDERS"
   )) {
@@ -89,16 +88,21 @@ describe("provider catalog regressions", () => {
   });
 
   it("does not leak API key values through public provider config", () => {
-    const publicConfig = publicProviderConfig(providerConfig());
+    const runtimeCredentials = createRuntimeCredentialManager();
+    runtimeCredentials.set("openai", "sk-regression-secret");
+    const publicConfig = publicProviderConfig(providerConfig(), runtimeCredentials);
     expect(JSON.stringify(publicConfig)).not.toContain("sk-regression-secret");
     expect(publicConfig.providers.find((provider) => provider.id === "openai")).toMatchObject({
-      apiKeyEnv: "OPENAI_API_KEY",
-      hasCredential: true
+      hasCredential: true,
+      credentialStatus: "configured"
     });
   });
 
   it("rejects models that cannot return structured email output", () => {
-    const registry = createProviderRegistry(providerConfig());
+    const runtimeCredentials = createRuntimeCredentialManager();
+    runtimeCredentials.set("anthropic", "anthropic-test-secret");
+    runtimeCredentials.set("xai", "xai-test-secret");
+    const registry = createProviderRegistry(providerConfig(), { runtimeCredentials });
     expect(() => registry.validate("lumaai", "ray-2")).toThrow(/structured email generation/);
     expect(() => registry.validate("openai", "gpt-image-2")).toThrow(/structured email generation/);
     expect(registry.validate("anthropic", "claude-fable-5").model.id).toBe("claude-fable-5");

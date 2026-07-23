@@ -1,6 +1,7 @@
 import { escapeHtml } from "../utils/helpers.js";
+import { renderContactActions } from "./contactActions.js";
 
-export function renderHtmlDocument({ subject, emailHtml, config }) {
+export function renderHtmlDocument({ subject, emailHtml, config, contactCandidates = null }) {
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -11,6 +12,9 @@ export function renderHtmlDocument({ subject, emailHtml, config }) {
     body{margin:0;background:#f5f4ef;color:#1d252c;font-family:Arial,Helvetica,sans-serif;}
     .app-shell{max-width:760px;margin:0 auto;padding:24px;}
     .subject{font-size:18px;font-weight:700;margin:0 0 18px 0;color:#1d252c;}
+    .contact-actions{background:#eef7f5;border:1px solid #b9d8d2;padding:16px;margin:0 0 18px;}
+    .contact-actions h2{font-size:16px;margin:0 0 8px;}.contact-actions ul{margin:0;padding-left:20px;}
+    .contact-actions li{margin:8px 0;}.contact-actions small{display:block;color:#52645f;margin-top:2px;}
     .email-canvas{background:#fff;border:1px solid #d8dedc;padding:24px;}
     .print-footer{font-size:11px;color:#66736f;margin-top:16px;}
     @media print{
@@ -23,6 +27,7 @@ export function renderHtmlDocument({ subject, emailHtml, config }) {
 </head>
 <body>
   <main class="app-shell">
+    ${contactCandidates ? renderContactActions(contactCandidates) : ""}
     <p class="subject">Subject: ${escapeHtml(subject)}</p>
     <section class="email-canvas">${emailHtml}</section>
     <p class="print-footer">${escapeHtml(config.business.printFooter)}</p>

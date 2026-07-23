@@ -1,4 +1,5 @@
 import { createApp } from "./src/app.js";
+import { createShutdownCoordinator } from "./src/lifecycle/shutdown.js";
 import { closeDatabase } from "./src/persistence/database.js";
 
 const { app, context } = createApp();
@@ -10,22 +11,30 @@ const server = app.listen(context.config.port, context.config.host, () => {
   );
 });
 
-function shutdown(signal) {
-  context.logger.info({ signal }, "Shutting down");
-  if (context.modelSyncTimer) clearInterval(context.modelSyncTimer);
-  server.close(() => {
-    closeDatabase(context.db);
-    process.exit(0);
-  });
-  setTimeout(() => process.exit(1), 8000).unref();
-}
+server.requestTimeout = Math.max(
+  context.config.limits.responseDeadlineMs + context.config.limits.cancellationLatencyMs,
+  30_000
+);
+server.headersTimeout = Math.max(server.requestTimeout + 1_000, 5_000);
+server.keepAliveTimeout = Math.max(context.config.limits.responseIdleTimeoutMs, 5_000);
+server.timeout = Math.max(context.config.limits.responseIdleTimeoutMs, 5_000);
 
-process.on("SIGINT", shutdown);
-process.on("SIGTERM", shutdown);
-process.on("unhandledRejection", (reason) => {
-  context.logger.error({ err: reason }, "Unhandled promise rejection");
+context.logger.info(
+  {
+    requestTimeoutMs: server.requestTimeout,
+    headersTimeoutMs: server.headersTimeout,
+    keepAliveTimeoutMs: server.keepAliveTimeout,
+    socketTimeoutMs: server.timeout
+  },
+  "Server timeout policy configured"
+);
+
+const shutdown = createShutdownCoordinator({
+  context,
+  server,
+  logger: context.logger,
+  closeDatabase,
+  drainTimeoutMs: Math.max(8_000, context.config.limits.cancellationLatencyMs)
 });
-process.on("uncaughtException", (error) => {
-  context.logger.fatal({ err: error }, "Uncaught exception");
-  shutdown("uncaughtException");
-});
+shutdown.attachServer(server);
+shutdown.installProcessHandlers();

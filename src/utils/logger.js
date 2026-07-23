@@ -42,12 +42,27 @@ export function createAppLogger(config) {
     maxFiles: config.limits.logMaxFiles,
     compress: "gzip"
   });
+  let fileStreamWarned = false;
+  fileStream.on("error", (error) => {
+    if (fileStreamWarned) return;
+    fileStreamWarned = true;
+    console.warn("[log-stream-error]", {
+      message: redactSecrets(error?.message || String(error)),
+      degradedLogging: true
+    });
+  });
 
   const streams = [{ stream: process.stdout }, { stream: fileStream }];
-  return pino(
+  const logger = pino(
     {
       name: "email-gen",
       level: config.logLevel,
+      timestamp: pino.stdTimeFunctions.isoTime,
+      formatters: {
+        level(label) {
+          return { level: label, severity: label === "warn" ? "warning" : label };
+        }
+      },
       redact: { paths: REDACT_PATHS, censor: "[REDACTED]" },
       serializers: {
         err(error) {
@@ -65,6 +80,11 @@ export function createAppLogger(config) {
     },
     pino.multistream(streams)
   );
+  logger.close = () => {
+    logger.flush?.();
+    fileStream.end?.();
+  };
+  return logger;
 }
 
 export function logFilePath(config) {

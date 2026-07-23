@@ -69,7 +69,8 @@ export function processingRoutes(context) {
           allowInferredCapabilities: context.config.modelSync.allowInferredCapabilities
         }
       },
-      ai: context.providerRegistry.publicConfig()
+      ai: context.providerRegistry.publicConfig(),
+      credentials: context.runtimeCredentials.publicStates()
     });
   });
 
@@ -117,7 +118,10 @@ export function processingRoutes(context) {
 
   router.get("/jobs", (req, res) => {
     const project = context.repositories.projects.resolve(req.query.projectId);
-    res.json({ project, jobs: context.repositories.jobs.list(50, { projectId: project?.id }) });
+    res.json({
+      project,
+      jobs: context.repositories.jobs.list(50, { projectId: project?.id, executionMode: "standard" })
+    });
   });
 
   router.get("/jobs/:id", (req, res, next) => {

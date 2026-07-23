@@ -1,0 +1,225 @@
+
+> ai-batch-personalizer@2.0.0 test:coverage
+> cross-env NODE_ENV=test AI_MOCK=true vitest run --coverage
+
+
+ RUN  v4.1.10 C:/Users/kyle_/OneDrive/Documents/email-gen
+      Coverage enabled with v8
+
+[2026-07-23 06:18:11.119 -0500] INFO (ai-powered): [ai-powered] AI call completed
+    modality: "structured"
+    model: "mock-structured-v1"
+    provider: "mock"
+    costUsd: "0.000278"
+    isEstimate: false
+    cumulativeCostUsd: "0.000278"
+    latencyMs: 1
+    promptTokens: 42
+    completionTokens: 118
+    totalTokens: 160
+[2026-07-23 06:18:11.527 -0500] INFO (ai-powered): [ai-powered] AI call completed
+    modality: "structured"
+    model: "mock-structured-v1"
+    provider: "mock"
+    costUsd: "0.000278"
+    isEstimate: false
+    cumulativeCostUsd: "0.000278"
+    latencyMs: 1
+    promptTokens: 42
+    completionTokens: 118
+    totalTokens: 160
+[2026-07-23 06:18:12.415 -0500] INFO (ai-powered): [ai-powered] AI call completed
+    modality: "structured"
+    model: "mock-structured-v1"
+    provider: "mock"
+    costUsd: "0.000278"
+    isEstimate: false
+    cumulativeCostUsd: "0.000278"
+    latencyMs: 1
+    promptTokens: 42
+    completionTokens: 118
+    totalTokens: 160
+[2026-07-23 06:18:13.622 -0500] INFO (ai-powered): [ai-powered] AI call completed
+    modality: "structured"
+    model: "mock-structured-v1"
+    provider: "mock"
+    costUsd: "0.000278"
+    isEstimate: false
+    cumulativeCostUsd: "0.000278"
+    latencyMs: 1
+    promptTokens: 42
+    completionTokens: 118
+    totalTokens: 160
+[2026-07-23 06:18:13.627 -0500] INFO (ai-powered): [ai-powered] AI call completed
+    modality: "structured"
+    model: "mock-structured-v1"
+    provider: "mock"
+    costUsd: "0.000278"
+    isEstimate: false
+    cumulativeCostUsd: "0.000278"
+    latencyMs: 1
+    promptTokens: 42
+    completionTokens: 118
+    totalTokens: 160
+[2026-07-23 06:18:13.633 -0500] INFO (ai-powered): [ai-powered] AI call completed
+    modality: "structured"
+    model: "mock-structured-v1"
+    provider: "mock"
+    costUsd: "0.000278"
+    isEstimate: false
+    cumulativeCostUsd: "0.000278"
+    latencyMs: 1
+    promptTokens: 42
+    completionTokens: 118
+    totalTokens: 160
+[2026-07-23 06:18:13.638 -0500] INFO (ai-powered): [ai-powered] AI call completed
+    modality: "structured"
+    model: "mock-structured-v1"
+    provider: "mock"
+    costUsd: "0.000278"
+    isEstimate: false
+    cumulativeCostUsd: "0.000278"
+    latencyMs: 1
+    promptTokens: 42
+    completionTokens: 118
+    totalTokens: 160
+[2026-07-23 06:18:13.783 -0500] INFO (ai-powered): [ai-powered] AI call completed
+    modality: "structured"
+    model: "mock-structured-v1"
+    provider: "mock"
+    costUsd: "0.000278"
+    isEstimate: false
+    cumulativeCostUsd: "0.000278"
+    latencyMs: 1
+    promptTokens: 42
+    completionTokens: 118
+    totalTokens: 160
+[2026-07-23 06:18:14.601 -0500] INFO (ai-powered): [ai-powered] AI call completed
+    modality: "structured"
+    model: "mock-structured-v1"
+    provider: "mock"
+    costUsd: "0.000278"
+    isEstimate: false
+    cumulativeCostUsd: "0.000278"
+    latencyMs: 1
+    promptTokens: 42
+    completionTokens: 118
+    totalTokens: 160
+[2026-07-23 06:18:14.607 -0500] INFO (ai-powered): [ai-powered] AI call completed
+    modality: "structured"
+    model: "mock-structured-v1"
+    provider: "mock"
+    costUsd: "0.000278"
+    isEstimate: false
+    cumulativeCostUsd: "0.000278"
+    latencyMs: 1
+    promptTokens: 42
+    completionTokens: 118
+    totalTokens: 160
+
+ Test Files  58 passed (58)
+      Tests  231 passed (231)
+   Start at  06:16:42
+   Duration  461.23s (transform 16.17s, setup 0ms, import 234.82s, tests 70.75s, environment 14ms)
+
+ % Coverage report from v8
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   67.68 |    55.53 |   78.38 |   70.34 |                   
+ addenda           |    62.5 |       50 |   63.63 |   67.74 |                   
+  fallbacks.js     |       0 |        0 |       0 |       0 | 4-19              
+  loader.js        |   79.16 |    68.75 |     100 |   88.88 | 25,31             
+  renderer.js      |   54.54 |       40 |     100 |    62.5 | 11-13             
+ ai                |   50.46 |    34.86 |    69.6 |   52.06 |                   
+  ...ayProvider.js |   36.36 |    29.05 |   46.66 |   37.37 | ...15,323,351-398 
+  grokProvider.js  |   52.63 |    44.82 |      50 |   56.25 | 9-19              
+  processor.js     |    73.8 |    40.62 |     100 |    73.8 | ...,73-77,124-132 
+  ...tchService.js |    46.4 |    31.51 |   67.46 |   47.56 | ...2054,2149-2214 
+  ...iderErrors.js |      80 |    68.75 |     100 |     100 | 5-7,12,15         
+  ...erRegistry.js |   82.35 |    74.19 |   85.71 |   87.09 | 35,67,95,108      
+  ...onseParser.js |   79.06 |    62.74 |     100 |   85.71 | 28-31,36,69       
+  ...turedEmail.js |      80 |    57.14 |     100 |      80 | 19,31             
+ ai/modelCatalog   |   71.42 |    60.53 |   78.87 |   74.68 |                   
+  batchMetadata.js |   94.54 |    82.45 |     100 |   94.33 | 300-309,332       
+  capabilities.js  |    87.3 |    73.14 |     100 |   88.46 | 87-89,93,96,99    
+  ...ingScraper.js |   89.02 |    66.16 |     100 |   97.87 | 208,449-453       
+  ...erAdapters.js |   42.18 |    51.79 |   57.14 |   45.29 | ...09-628,655-659 
+  providerHttp.js  |    88.7 |    74.07 |   83.33 |   90.38 | 23,26,34-36       
+  ...eDiscovery.js |   82.19 |    69.52 |     100 |   82.35 | ...82,203,213-227 
+  synchronizer.js  |   59.66 |     47.4 |   68.57 |   61.53 | ...43-448,470-490 
+ batch             |   60.36 |    48.68 |      80 |   62.76 |                   
+  batchManager.js  |   61.36 |    47.16 |   76.47 |   63.15 | ...36,141,169-191 
+  retryPolicy.js   |   52.38 |    52.17 |     100 |   56.25 | 21-32             
+ data              |    66.9 |    56.06 |   81.81 |   69.91 |                   
+  importer.js      |   59.67 |    42.85 |   66.66 |   64.15 | ...0-78,84,87,123 
+  normalizer.js    |   83.33 |    80.64 |     100 |      85 | ...00-107,147-151 
+  validators.js    |    9.09 |        0 |      50 |      10 | 4-15              
+ data/formats      |   37.03 |       25 |   66.66 |   43.47 |                   
+  ...icJsParser.js |   37.03 |       25 |   66.66 |   43.47 | ...23,36-37,42-52 
+ lifecycle         |       0 |        0 |       0 |       0 |                   
+  shutdown.js      |       0 |        0 |       0 |       0 | 6-227             
+ middleware        |   75.38 |    59.52 |    87.5 |    74.6 |                   
+  errorHandler.js  |   81.81 |    36.36 |     100 |   81.81 | 26,28             
+  requestId.js     |     100 |       50 |     100 |     100 | 6                 
+  security.js      |   73.17 |    69.64 |    87.5 |   71.79 | ...23-131,148-154 
+  validation.js    |    62.5 |       50 |   66.66 |    62.5 | 7-15              
+ output            |   88.56 |    74.68 |   93.82 |   89.95 |                   
+  ...umPreparer.js |     100 |    83.33 |     100 |     100 | 23                
+  ...rdRenderer.js |       0 |      100 |       0 |       0 | 4                 
+  ...actActions.js |   94.82 |       80 |     100 |     100 | ...06,114,123-125 
+  ...ryExporter.js |   98.51 |       75 |     100 |     100 | ...94,240-242,321 
+  ...ntRenderer.js |     100 |       60 |     100 |     100 | 10-30             
+  emailRenderer.js |     100 |       70 |     100 |     100 | 10-58             
+  exporter.js      |       0 |        0 |       0 |       0 | 9-67              
+  sanitizer.js     |    92.3 |       85 |     100 |    92.3 | 14                
+ persistence       |    74.6 |    30.95 |   88.88 |      75 |                   
+  database.js      |     100 |       50 |     100 |     100 | 15                
+  migrations.js    |   70.37 |       30 |   85.71 |   71.15 | 58-69,129-152     
+ ...e/repositories |   73.29 |    60.68 |   80.43 |   78.38 |                   
+  ...Repository.js |   84.61 |    73.07 |   88.88 |      88 | ...59,167,175,183 
+  ...Repository.js |   69.44 |    67.69 |      80 |      80 | 108-118,170-172   
+  jobRepository.js |   58.82 |       50 |      75 |    62.5 | 46-64             
+  ...Repository.js |   94.94 |    80.92 |     100 |     100 | ...17-421,440,445 
+  ...Repository.js |   91.66 |    66.66 |     100 |     100 | 46,59-75          
+  ...Repository.js |   60.17 |    50.63 |   64.28 |   64.94 | ...81-515,581-617 
+  ...Repository.js |   83.33 |    63.63 |   88.88 |   90.47 | 84-85             
+  ...Repository.js |    12.5 |        0 |      25 |    12.5 | 4,19-44           
+  ...Repository.js |   82.85 |    60.37 |   84.21 |   85.93 | ...31,134-135,205 
+ projects          |   74.19 |    48.93 |    87.5 |   81.48 |                   
+  projectNamer.js  |   74.19 |    48.93 |    87.5 |   81.48 | 44-45,59-62       
+ research          |   77.82 |     66.3 |   86.58 |   79.73 |                   
+  ...tDiscovery.js |   92.64 |    85.91 |     100 |   98.18 | 81                
+  ...tExtractor.js |     100 |    94.44 |     100 |     100 | 10                
+  networkPolicy.js |    80.3 |    71.92 |   88.88 |   81.53 | ...92,104,114,142 
+  ...rchService.js |   76.66 |    59.43 |      88 |   79.64 | ...02,207-208,343 
+  ...chProvider.js |    3.33 |        0 |       0 |     3.7 | 11-72             
+  ...entFetcher.js |   82.63 |    71.12 |   86.36 |   83.97 | ...32,447,450,466 
+  ...iteFetcher.js |   72.72 |    71.42 |     100 |   71.42 | 11,21-31          
+ resend            |   67.85 |    68.08 |   83.33 |    69.6 |                   
+  resendGateway.js |   67.85 |    68.08 |   83.33 |    69.6 | ...02,366,376-377 
+ security          |   74.25 |    73.92 |   71.92 |   75.09 |                   
+  ...ialCatalog.js |   66.66 |    42.85 |   58.33 |   71.42 | 114-123           
+  requestPolicy.js |   88.31 |    80.18 |   94.11 |   88.96 | ...79,290,298,304 
+  ...ialManager.js |   75.92 |    71.15 |   89.47 |   78.84 | ...95,114,127-130 
+  ...alResolver.js |      90 |    84.61 |     100 |      90 | 11                
+  ...ntialStore.js |    3.12 |        0 |       0 |    3.12 | 7-76              
+ templates         |   88.17 |     67.9 |     100 |   92.59 |                   
+  loader.js        |   81.25 |    66.66 |     100 |   85.71 | 23,27             
+  renderer.js      |     100 |    72.22 |     100 |     100 | 22-25             
+  variables.js     |   88.05 |    66.66 |     100 |   92.98 | 57,63,109-110     
+ utils             |   76.61 |    64.42 |   80.76 |   81.45 |                   
+  ...rrencyGate.js |   58.33 |       50 |      50 |   58.33 | 12-25,38-41       
+  errors.js        |   64.28 |    55.55 |      60 |   64.28 | 13,41-57          
+  files.js         |   83.87 |    70.96 |     100 |   83.87 | 40,73,83-84,92    
+  helpers.js       |   71.42 |    53.84 |    92.3 |   72.72 | ...37,42-44,70,77 
+  logger.js        |   78.94 |    33.33 |   66.66 |   82.35 | 54-55,76          
+  ...onseBodies.js |   78.44 |    67.64 |   83.33 |   86.52 | ...71-272,298,384 
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 67.68% ( 2899/4283 )
+Branches     : 55.53% ( 2850/5132 )
+Functions    : 78.38% ( 649/828 )
+Lines        : 70.34% ( 2714/3858 )
+================================================================================

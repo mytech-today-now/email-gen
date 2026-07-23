@@ -1,13 +1,5 @@
 import { AiClient, createProvider, createPromptShieldPlugin } from "ai-powered";
-
-const API_KEY_ENV_BY_PROVIDER = {
-  openai: "OPENAI_API_KEY",
-  anthropic: "ANTHROPIC_API_KEY",
-  xai: "XAI_API_KEY",
-  venice: "VENICE_API_KEY",
-  lumaai: "LUMAAI_API_KEY",
-  custom: "AI_CUSTOM_API_KEY"
-};
+import { providerCredentialDefinition } from "../security/credentialCatalog.js";
 
 function envString(...names) {
   for (const name of names) {
@@ -27,10 +19,11 @@ function customHeadersFromEnv() {
   return Object.fromEntries(Object.entries(parsed).map(([key, value]) => [key, String(value)]));
 }
 
-export async function createAiPoweredClient({ provider, model, config }) {
+export async function createAiPoweredClient({ provider, model, config, runtimeCredentials }) {
   const mock = provider === "mock" || process.env.AI_MOCK === "true";
-  const apiKeyEnv = API_KEY_ENV_BY_PROVIDER[provider];
-  const apiKey = apiKeyEnv ? process.env[apiKeyEnv] : undefined;
+  const credential = providerCredentialDefinition(provider);
+  const apiKey =
+    !mock && credential?.secretName ? runtimeCredentials?.get(credential.secretName) || undefined : undefined;
   const customProviderType =
     envString("AI_CUSTOM_PROVIDER_TYPE", "CUSTOM_PROVIDER_TYPE") || "openai-compatible";
   const aiConfig = {

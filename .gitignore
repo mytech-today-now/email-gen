@@ -4,8 +4,7 @@ node_modules/
 !.env.example
 storage/*.sqlite
 storage/*.sqlite-*
-logs/*.log
-logs/*.jsonl
+logs/
 output/*.html
 output/*.zip
 coverage/

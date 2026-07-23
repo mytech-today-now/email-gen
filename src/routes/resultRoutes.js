@@ -8,6 +8,7 @@ import { renderEmailFragment, renderPlainText } from "../output/emailRenderer.js
 import { writeResultHtml, writeResultsZip } from "../output/exporter.js";
 import { deliveryExportProfiles, writeDeliveryExport } from "../output/deliveryExporter.js";
 import { renderHtmlDocument } from "../output/documentRenderer.js";
+import { contactCandidatesForResult } from "../output/contactActions.js";
 import { processRecord } from "../ai/processor.js";
 import { loadTemplate } from "../templates/loader.js";
 import { resolveInside } from "../utils/files.js";
@@ -63,10 +64,7 @@ export function resultRoutes(context) {
       const project = context.repositories.projects.resolve(req.query.projectId);
       const deleted = context.repositories.results.delete(req.params.id, { projectId: project?.id });
       if (!deleted) throw new AppError("RESULT_NOT_FOUND", "Result was not found.", 404);
-      context.logger.info(
-        { resultId: deleted.id, projectId: deleted.projectId, subject: deleted.subject },
-        "Result deleted"
-      );
+      context.logger.info({ resultId: deleted.id, projectId: deleted.projectId }, "Result deleted");
       res.json({ deleted: { id: deleted.id }, project });
     } catch (error) {
       next(error);
@@ -139,9 +137,11 @@ export function resultRoutes(context) {
         researchEnabled: req.body.researchEnabled ?? false,
         config: context.config,
         providerRegistry: context.providerRegistry,
+        runtimeCredentials: context.runtimeCredentials,
         cacheRepository: context.cacheRepository,
         browserLauncher: context.browserLauncher,
-        logger: context.logger
+        logger: context.logger,
+        signal: context.shutdownController?.signal ?? null
       });
       const processing = context.repositories.results.createProcessing({
         projectId: existing.projectId,
@@ -173,11 +173,15 @@ export function resultRoutes(context) {
     try {
       const result = context.repositories.results.get(req.params.id);
       if (!result) throw new AppError("RESULT_NOT_FOUND", "Result was not found.", 404);
-      res
-        .type("html")
-        .send(
-          renderHtmlDocument({ subject: result.subject, emailHtml: result.emailHtml, config: context.config })
-        );
+      const record = context.repositories.records.get(result.recordId, { projectId: result.projectId });
+      res.type("html").send(
+        renderHtmlDocument({
+          subject: result.subject,
+          emailHtml: result.emailHtml,
+          config: context.config,
+          contactCandidates: record ? contactCandidatesForResult(result, record) : []
+        })
+      );
     } catch (error) {
       next(error);
     }

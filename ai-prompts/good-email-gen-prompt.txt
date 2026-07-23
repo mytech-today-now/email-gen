@@ -1,0 +1,1354 @@
+ARCHIVED PROMPT: historical implementation brief only.
+Sections in this file that describe an encrypted browser credential vault, credential-export backups, browser-to-loopback session identifiers, or browser schema v3 are obsolete.
+Current architecture and behavior are documented in docs/ARCHITECTURE.md, docs/BROWSER_STORAGE.md, docs/BACKUP_FORMAT.md, docs/PROVIDERS.md, and docs/SECURITY.md.
+
+You are a principal full-stack engineer, software architect, UX designer, accessibility specialist, application-security engineer, email-rendering expert, AI-provider integration engineer, and test lead.
+
+Your assignment is to implement a complete, production-quality refactor of the existing **AI Batch Personalizer** application:
+
+- Repository: https://github.com/mytech-today-now/email-gen
+- Creator: https://mytech.today
+
+Do not return only recommendations, wireframes, pseudocode, or an implementation plan. Inspect the current repository, modify the working application, migrate its architecture where required, add comprehensive tests, run the full verification suite, and update all relevant documentation.
+
+Think through implementation details privately. In your final response, provide a concise engineering decision summary and verification evidence, not hidden chain-of-thought.
+
+# Primary Objective
+
+Transform AI Batch Personalizer into a polished, accessible, browser-persistent, local-first application with:
+
+- Dense, usable data tables.
+- Reusable accessible split-pane layouts.
+- Full prompt-template CRUD.
+- A selectable, price-aware model catalog.
+- Better processing controls.
+- A unified raw/visual email editor.
+- Reliable email previewing and exporting.
+- Improved public contact discovery.
+- Browser-owned user data and encrypted credentials.
+- Configuration, backup, restore, and migration tools.
+- Ollama, OpenRouter, and policy-compliant Resend support.
+- Comprehensive logging, graceful failures, and automated coverage.
+
+Preserve all useful existing functionality unless a requirement explicitly replaces it. Avoid an unrelated framework rewrite. The current vanilla browser interface may remain vanilla JavaScript, but refactor it into maintainable modules and use focused, actively maintained dependencies when they materially improve reliability.
+
+# Repository Baseline to Verify
+
+Inspect the repository before changing anything. At minimum, review:
+
+- `README.md`
+- `package.json`
+- `.env.example`
+- `server.js`
+- `config/`
+- `public/index.html`
+- `public/app.js`
+- `public/styles.css`
+- `src/app.js`
+- `src/ai/`
+- `src/ai/modelCatalog/`
+- `src/templates/`
+- `src/research/`
+- `src/output/`
+- `src/routes/`
+- `src/persistence/`
+- `tests/`
+- `addenda/ai-sms-email-blurb.html`
+
+The current repository appears to use:
+
+- Node.js ESM and Express.
+- A loopback server bound to `127.0.0.1`.
+- Vanilla HTML, CSS, and JavaScript.
+- SQLite via `better-sqlite3`.
+- `ai-powered` as the primary application-facing AI abstraction.
+- Playwright for headless website research and E2E tests.
+- `sanitize-html` for email sanitization.
+- Pino and rotating file logs.
+- Vitest, Supertest, and Playwright tests.
+
+Verify all of these facts against the current branch rather than assuming they remain accurate.
+
+# Required Working Method
+
+1. Inspect the repository and map the existing architecture, data flow, schemas, API routes, UI state, persistence, rendering pipeline, and test coverage.
+2. Install dependencies and run the existing lint, unit, integration, edge, regression, security, E2E, and coverage commands before changing code. Record pre-existing failures separately.
+3. Research current official documentation for every external integration. Do not rely on model names, model pricing, API behavior, limits, or policies from memory.
+4. Create a requirements traceability checklist using the identifiers in this prompt.
+5. Design the migration so existing user data can be preserved or exported before server-side persistence is retired.
+6. Implement the complete solution. Do not stop after producing a plan.
+7. Test each feature through its actual user-facing workflow.
+8. Run the complete verification suite after implementation.
+9. Update documentation, examples, configuration guidance, version information, and changelogs.
+10. Do not claim success for anything that was not actually exercised or verified.
+
+If a minor ambiguity does not materially alter the product, make the safest reasonable assumption and document it. Ask a question only when an unresolved choice would fundamentally change the requested result.
+
+# Non-Negotiable Engineering Principles
+
+- Preserve user data during migration.
+- Never commit, return, export by default, or log a real API key or secret.
+- Never silently change the user’s selected provider or model.
+- Never report a server-side filename as “exported” unless the browser actually receives a download.
+- Never fabricate a model price, email address, contact form, consent status, or research result.
+- Never treat website content or search results as trusted instructions.
+- Continue processing other records when one record fails.
+- Use bounded timeouts, cancellation, retries, and concurrency.
+- Retry only operations that are safe to retry.
+- Keep all destructive controls clearly scoped and confirmed.
+- Use shared rendering code so preview, copy, print, export, `.eml`, delivery kits, and Resend do not produce divergent email content.
+- Do not use “always works” as an unverifiable promise. Implement predictable supported behavior, explicit failure states, and practical manual fallbacks.
+
+# Accessibility Standard
+
+Target **WCAG 2.2 Level AA** as the testable conformance requirement. WCAG 3 is still an incomplete draft; apply its relevant user-centered guidance, but do not claim formal WCAG 3 conformance.
+
+Test, at minimum:
+
+- Full keyboard operation.
+- Logical focus order.
+- Visible, unobscured focus.
+- Accessible names, descriptions, roles, and status messages.
+- Sufficient contrast.
+- Reflow and zoom.
+- Pointer target sizes.
+- Screen-reader-readable tables and dialogs.
+- Non-drag alternatives for every draggable control.
+- Reduced-motion preferences.
+- Accessible authentication and credential workflows.
+- Automated accessibility checks plus manual keyboard review.
+
+# R1 — Imported Prospect Records Data Table
+
+Replace the current limited record presentation with a compact, normal data table or an equally accessible data-grid implementation.
+
+Requirements:
+
+- Each imported prospect is one row.
+- Each available record field is represented as a column.
+- Derive the complete column union from the imported dataset, including nested values flattened into readable paths.
+- Columns referenced by the selected prompt template must appear first.
+- Clearly distinguish prompt-used columns from other columns.
+- Preserve selection checkboxes, active-record behavior, and batch selection.
+- Keep useful fixed columns—such as selection, record identifier, display name, and status—visible while horizontally scrolling when practical.
+- All columns must remain discoverable through horizontal scrolling and an accessible column chooser.
+- Support sorting, filtering, search, column visibility, and reasonable column resizing or reordering.
+- Long cell values may truncate visually, but their full value must be available through an accessible detail view or tooltip.
+- Do not turn every row into a giant button.
+- Row activation and checkbox selection must remain keyboard accessible.
+- Use compact spacing without reducing legibility or interactive target sizes.
+- Large datasets must not freeze the page. Use accessible pagination, incremental rendering, or carefully tested virtualization.
+- Preserve semantic table relationships or provide equivalent ARIA grid semantics.
+- Keep table headers visible during vertical scrolling where practical.
+
+# R1A — Balanced Data-Section Height
+
+The Imported Prospect Records pane and Prompt Template pane must:
+
+- Stretch to the same vertical boundary.
+- Meet the horizontal divider above Processing evenly.
+- Avoid mismatched blank areas beneath either pane.
+- Use internal scrolling when content exceeds the available height.
+- Avoid content spilling outside either pane.
+
+Use layout primitives such as `min-height: 0`, grid/flex stretching, bounded pane heights, and internal overflow rather than hardcoded filler whitespace.
+
+# R2 — Editable Prompt Templates and Complete CRUD
+
+Replace the current read-only rendered `<pre>` workflow with a proper template-management experience.
+
+The primary template area must display editable template source text. It must not masquerade as an editable rendered record preview.
+
+Implement:
+
+- Create.
+- Read.
+- Update.
+- Save.
+- Save As.
+- Rename.
+- Duplicate.
+- Delete with confirmation.
+- Import.
+- Export.
+- Search.
+- Sort.
+- Tags, folders, or another simple organizational mechanism.
+- Template version history or revision snapshots.
+- Created and updated timestamps.
+- Unsaved-change detection.
+- An explicit discard/revert operation.
+- Duplicate-name validation.
+- Filename and identifier sanitization.
+
+Existing bundled templates, newly created templates, and imported templates must appear in the same organizer and use the same storage/repository abstraction.
+
+If bundled templates should remain immutable, allow users to duplicate them into editable user templates. Do not overwrite package-owned source files silently.
+
+Continue supporting the existing variable syntax, including:
+
+- `{{field}}`
+- `{{field|required}}`
+- `{{field?}}`
+- `{{field|default:"value"}}`
+- `{{nested.field}}`
+
+Provide:
+
+- Variable discovery.
+- Missing-variable warnings.
+- Malformed-variable warnings.
+- A separate explicit “Rendered Preview” action or view for the active record.
+- A clear distinction between template source and record-specific rendered output.
+- Save and preview keyboard shortcuts where appropriate.
+
+# R3 — Reusable Accessible Split Panes
+
+Create one reusable split-pane component and use it consistently in:
+
+1. Data: Imported Prospect Records / Prompt Template.
+2. Model Catalog: Provider Synchronization Status / Discovered Models.
+3. Results: Generated Results / Selected Result.
+
+The separator must:
+
+- Be draggable left and right.
+- Use Pointer Events and pointer capture.
+- Have `role="separator"`.
+- Be keyboard focusable.
+- Expose `aria-orientation`, `aria-valuemin`, `aria-valuemax`, and `aria-valuenow`.
+- Support Arrow keys for incremental resizing.
+- Support larger keyboard steps with Shift+Arrow.
+- Provide Home/End or equivalent min/max controls.
+- Provide a reset-to-default action.
+- Have a clearly visible focus indicator.
+- Offer a non-drag keyboard alternative, satisfying WCAG 2.2 dragging requirements.
+- Persist each section’s ratio as a browser UI preference.
+- Clamp ratios so neither pane becomes unusably narrow.
+- Collapse to a stacked responsive layout when the viewport cannot safely support two panes.
+- Disable or hide the separator in stacked mode.
+
+Resizing must never increase section height merely because the divider moves. Pane contents must reflow or scroll internally.
+
+# R4 — Typography and Design Consistency
+
+Normalize typography throughout the application:
+
+- Use one documented type scale.
+- Use consistent labels, captions, section headings, table headers, body text, and status text.
+- Ensure Imported Prospect Records, Prompt Template, Model Catalog, Processing, and Results use the same visual language.
+- Centralize font families, sizes, line heights, spacing, colors, borders, focus rings, and control heights with CSS custom properties.
+- Remove arbitrary one-off font sizing unless required for hierarchy.
+- Preserve readability at 200% zoom and narrow viewport widths.
+
+# R5 — Move Model Selection into Model Catalog
+
+Remove the editable Provider and Model selectors from the Processing “Generation” cluster.
+
+Model selection must occur in the Discovered Models table.
+
+The Processing section may display a compact, read-only summary such as:
+
+- Selected provider.
+- Selected model.
+- Price summary.
+- Compatibility status.
+- A “Change Model” link that focuses or scrolls to the selected row in Model Catalog.
+
+Do not maintain competing provider/model selection states in two different controls.
+
+# R5A — Select Models from Discovered Models
+
+Make each compatible Discovered Models row selectable through an accessible single-selection mechanism:
+
+- A radio control, explicit selection column, or equivalent.
+- Clicking the row may select it, but keyboard and screen-reader selection must also work.
+- The selected row must have a clear visual and programmatic state.
+- Persist the user’s selection.
+- Preserve it through catalog refreshes when the model remains available.
+- If a selected model becomes unavailable, keep the old selection visible, explain the problem, and suggest alternatives. Do not silently switch.
+- Models incompatible with structured email generation must remain discoverable but disabled for generation with an explicit reason.
+- Support search, filtering, sorting, favorites, and provider grouping for large model catalogs.
+
+# R5B — Current Model Pricing
+
+Display current, source-attributed model pricing whenever authoritative pricing is available.
+
+Normalize pricing into understandable units, such as:
+
+- Input USD per 1 million tokens.
+- Output USD per 1 million tokens.
+- Cached-input read/write pricing where supplied.
+- Request, image, audio, video, or search fees where relevant.
+- Pricing tiers or long-context overrides.
+- Currency.
+- Pricing source.
+- Last refreshed or verified timestamp.
+- Fresh, stale, unavailable, local-compute, or variable status.
+
+Requirements:
+
+- Fetch live model/pricing metadata from supported official APIs where available.
+- OpenRouter’s `/api/v1/models` response includes per-token pricing data; preserve the raw values and accurately convert them for display.
+- Treat negative, sentinel, router-dependent, or absent pricing as “Variable” or “Unavailable,” not as zero.
+- For providers without a stable machine-readable pricing endpoint, use versioned metadata with an official source URL and verification timestamp.
+- Mark stale metadata clearly.
+- Do not scrape brittle pricing pages in the critical runtime path unless no supported API exists and the implementation is documented and tested.
+- Never invent prices.
+- Ollama should display “Local compute; no hosted API token fee,” not a misleading universal `$0 cost`.
+- Provide an optional batch-cost estimate clearly labeled as an estimate, based on measured or approximated input/output token counts.
+
+Extend the model catalog schema rather than storing opaque unvalidated pricing objects only.
+
+# R5C — Model Catalog Split Pane
+
+Apply the reusable split-pane component to:
+
+- Provider Synchronization Status.
+- Discovered Models.
+
+Both panes must stretch evenly, scroll internally, and remain responsive.
+
+# R5D — Processing Section Redesign
+
+Refactor Processing into compact, understandable workflow controls.
+
+## R5D1 — Processing Scope and Actions
+
+Replace the current cluster of:
+
+- Process Current
+- Process Selected
+- Process All
+- Range
+- Start
+- End
+- Process Range
+- Stop Scheduling
+- Retry Failed
+
+with:
+
+- An accessible scope selector: Current, Selected, All, or Range.
+- A single primary Process button whose label includes the scope and item count.
+- Range fields shown only when Range is selected.
+- Clear validation for start/end order and bounds.
+- A Stop control visible and enabled only while relevant.
+- A Retry Failed control that reports the number of retryable failures.
+- A progress summary with queued, running, completed, failed, stopped, and remaining counts.
+- Per-job cancellation through `AbortController` or an equivalent mechanism.
+- No new work scheduled after Stop is requested.
+- Already-running work handled according to a documented cancellation policy.
+- Safe retry semantics that do not duplicate completed work.
+
+## R5D2 — Addendum and Research Controls
+
+Integrate:
+
+- Addendum disabled/None.
+- Addendum selection.
+- Addendum preview.
+- Research enablement.
+- Research depth or strategy where appropriate.
+- Concurrency.
+- Delay/rate-limit controls.
+
+Use compact labeled groups, disclosure panels, or progressive settings rather than scattered unrelated controls.
+
+When Addendum is disabled, its selector must be disabled or hidden. When enabled, the selected addendum must remain visible and be included consistently in preview, edit, export, copy, `.eml`, and delivery output.
+
+# R6 — Results Section Redesign
+
+Apply the reusable split pane to:
+
+- Generated Results.
+- Selected Result.
+
+Both panes must stretch to the same bottom boundary and meet the footer evenly. Content must scroll internally rather than creating unmatched blank space.
+
+# R6A — Results Split-Pane Behavior
+
+Use the same resizing, keyboard, responsive, persistence, and non-overflow requirements defined in R3.
+
+# R6B — Compact Send / Import Area
+
+Redesign Send / Import as a compact toolbar or well-structured control group.
+
+Reduce unused space while retaining:
+
+- Delivery target selection.
+- Export Selected Kit.
+- Export Completed Kit.
+- Resend actions when configured and permitted.
+- Clear success, progress, and error states.
+
+# R6B1 — Target Control
+
+Redesign the Target label and selector so they match the rest of the form system:
+
+- Consistent label placement.
+- Accessible name and help text.
+- Reasonable width.
+- Compact alignment with related actions.
+- Responsive wrapping.
+- No isolated oversized whitespace.
+
+# R6C — Delete Selected Integration
+
+Move Delete Selected into the Generated Results table toolbar or caption area.
+
+Requirements:
+
+- Show the number of selected results.
+- Disable the action when nothing is selected.
+- Use a clearly destructive visual treatment.
+- Confirm the exact scope.
+- Preserve or restore a valid active selection afterward.
+- Prefer a recoverable soft-delete/trash model where practical; otherwise require confirmation.
+
+# R6D — Delete Current Integration
+
+Move Delete Current into the Selected Result header and rename it unambiguously, such as:
+
+- `Delete Selected Result`
+
+The confirmation must identify the selected subject or prospect so the user understands exactly what will be deleted.
+
+# R6E and R14 — One Unified Raw/Visual Email Editor
+
+Replace the separate Body HTML textarea and rendered preview iframe with one unified editor shell containing two modes:
+
+1. Raw HTML.
+2. Visual Email.
+
+Use one sticky mode switch in the upper-right corner of the editor shell.
+
+Raw mode must:
+
+- Be editable.
+- Use syntax highlighting for HTML.
+- Support line numbers, search, undo/redo, keyboard navigation, and error indicators.
+- Prefer a focused editor such as CodeMirror 6 rather than implementing a fragile custom highlighter.
+- Remain accessible and usable without a mouse.
+
+Visual mode must:
+
+- Render the complete final email, including body, addendum, signature, and other configured email content.
+- Be editable through a controlled content-editable surface or another safe rich-email editing approach.
+- Never execute scripts.
+- Never allow unsanitized remote resources, event handlers, or unsafe URLs.
+- Use the exact same canonical content consumed by copy, print, export, `.eml`, delivery kits, and Resend.
+- Synchronize edits back to raw mode without silently losing content.
+- Sanitize on input, mode transition, and save.
+- Warn the user when unsupported or unsafe markup is removed.
+
+Maintain a clear internal distinction between:
+
+- Original AI-generated body.
+- Result-specific editable final email HTML.
+- Addendum snapshot.
+- Signature/configuration snapshot.
+- Plain-text derivative.
+- Saved result versions.
+
+Saving an edit must create a recoverable version. Regeneration must not erase previous manual versions.
+
+# R6F — Accurate, Expandable Email Preview
+
+The Visual Email mode must be a useful near-final email preview.
+
+Requirements:
+
+- Render the entire final email and addendum, not only `bodyHtml`.
+- Use the same rendering pipeline as export and send operations.
+- Isolate application CSS from email CSS.
+- Provide a vertical resize handle or accessible height controls.
+- Provide “Fit Content” and reasonable min/max heights.
+- Preserve internal scrolling when the user does not expand it.
+- Persist preferred editor height.
+- Do not crop addenda or large emails silently.
+- Ensure result switching refreshes the editor completely.
+- Keep Rendered Prompt and Research in a separate collapsible details area below the editor.
+- Include desktop-width and narrow/mobile preview options if practical.
+- Do not claim pixel-identical rendering in every email client; document tested compatibility and limitations.
+
+# R6G — Results Action Layout
+
+Replace the current button cluster with logical groups:
+
+- Editing: Save Edits, Discard, Regenerate.
+- Clipboard: Copy Email Address, Copy Subject, Copy Rendered Email.
+- Advanced clipboard actions: Copy HTML and Copy Plain Text.
+- Output: Export HTML and Print.
+- Destructive: Delete Selected Result.
+
+Use responsive grouping, clear primary/secondary emphasis, and an overflow menu where helpful. Frequently used actions must not be hidden unnecessarily.
+
+All controls need:
+
+- Accessible names.
+- Keyboard focus.
+- Disabled states.
+- Contextual help.
+- Success/error feedback through an ARIA live region.
+- No layout collisions at narrow widths.
+
+# R7 — Application Footer
+
+Add a real application footer containing:
+
+- Repository link: https://github.com/mytech-today-now/email-gen
+- Creator link: https://mytech.today
+- Application name and current version.
+- Copyright information that cannot become stale.
+
+Use the runtime current year or omit the year. Do not hardcode a year that must be manually changed.
+
+Use secure external-link attributes such as `rel="noopener noreferrer"` when opening a new tab.
+
+# R8 — Fix `ai-sms-email-blurb.html` When Embedded
+
+The repository’s `addenda/ai-sms-email-blurb.html` works as a standalone HTML document but loses styling when passed through the current addendum/email pipeline.
+
+Inspect and confirm the entire cause. The current sanitizer and composition pipeline may strip:
+
+- `<html>`, `<head>`, `<style>`, and `<body>`.
+- Heading elements.
+- Class attributes.
+- Anchor styles.
+- CSS-dependent parent alignment.
+- Unsupported layout styles.
+
+Do not solve this by allowing arbitrary CSS or unsafe markup.
+
+Implement a safe email-addendum preparation pipeline:
+
+1. Detect a complete HTML document versus an HTML fragment.
+2. Parse the document safely.
+3. Inline supported stylesheet/class rules into elements before removing the document shell. A maintained CSS-inlining library may be used.
+4. Extract only the intended body fragment.
+5. Transform unsupported structures into conservative email-safe markup where necessary.
+6. Sanitize tags, attributes, URLs, and CSS properties using a strict allowlist.
+7. Preserve required safe inline alignment and typography.
+8. Ensure preview, exported HTML, copied HTML, `.eml`, and Resend all receive the same prepared fragment.
+
+Specifically verify that these elements render centered after embedding and export:
+
+- “How It Works”
+- “Why Restaurants Love It”
+- “Simple Pricing”
+- “per completed order”
+- “Call (847) 767-4914 to Start”
+
+Fix `$1–$1.50` so the en dash is visually aligned and cannot resemble an underscore. Prefer one typographic run such as `$1&ndash;$1.50`, or otherwise guarantee consistent baseline alignment. Ensure:
+
+- UTF-8 document metadata.
+- UTF-8 MIME headers in `.eml`.
+- Correct HTML entity handling.
+- No double encoding.
+
+Replace any stale hardcoded addendum copyright year with runtime substitution or yearless text.
+
+Add exact regression fixtures for this addendum. Verify the post-sanitization markup rather than testing only the standalone source file.
+
+# R9 — Contact Links at the Top of Exported HTML
+
+Every standalone exported result HTML page must contain a contact-actions area above the email preview.
+
+Display:
+
+- The preferred `mailto:` link when a usable email exists.
+- The preferred public contact-form link when no email exists.
+- If both exist, show both.
+- If multiple addresses or forms exist, show all candidates with the preferred candidate first.
+- Provenance labels and confidence indicators.
+- A clear “No contact method found” state when applicable.
+
+The contact-actions area belongs to the standalone exported utility page. Do not accidentally inject it into the actual email body sent to a prospect.
+
+Validate and escape every link. Prevent newline/header injection and unsafe URL schemes.
+
+# R10 — Better Email and Contact-Form Discovery
+
+Create a deterministic contact-discovery service with a normalized candidate schema such as:
+
+```json
+{
+  "type": "email | contact-form",
+  "value": "address or URL",
+  "sourceUrl": "exact page where it was found",
+  "sourceCategory": "business-website | external-search",
+  "method": "record-field | mailto | visible-text | structured-data | rendered-dom | form-analysis | search-result",
+  "sameDomain": true,
+  "confidence": 0.0,
+  "confidenceLabel": "high | medium | low",
+  "reason": "human-readable ranking explanation",
+  "discoveredAt": "ISO-8601 timestamp"
+}
+
+Store all candidates, not only one email string.
+
+R10A — Website and Headless-Browser Discovery
+
+Improve the existing Playwright/headless Chromium workflow.
+
+For the record’s website:
+
+Inspect the original HTML and JavaScript-rendered DOM.
+Extract emails from record fields, mailto: links, visible page text, structured data, metadata, and reasonable obfuscation patterns.
+Inspect header and footer navigation.
+Follow a bounded number of likely same-origin pages such as Contact, Contact Us, About, Support, Locations, and sitemap-discovered contact pages.
+Score forms based on labels, accessible names, input names/types, textarea/message fields, submit text, method, action, and page context.
+Exclude search, login, account creation, newsletter, reservation, checkout, job application, and unrelated forms unless they are clearly the only appropriate public inquiry method.
+Rank same-domain addresses higher.
+Rank public role addresses such as contact@, info@, hello@, or sales@ appropriately.
+Penalize noreply@, unrelated domains, hidden/tracking content, and weak external matches.
+Deduplicate case-insensitively.
+Validate email syntax and domain association.
+Use bounded page count, redirects, response bytes, render delays, and timeouts.
+Cache successful and failed research with appropriate TTLs.
+Preserve existing SSRF, redirect, subresource, private-address, protocol, and content-type defenses.
+
+Ollama loopback detection must use its own narrowly scoped loopback policy. Do not weaken general research SSRF protection to support Ollama.
+
+Treat scraped page content as untrusted data. Prevent prompt injection from website text from changing system instructions, exposing secrets, or expanding network access.
+
+R10B — External Search Fallback
+
+If website crawling finds no suitable email or contact form:
+
+Use a configurable, documented web-search provider API.
+Research current supported official APIs at implementation time.
+Do not scrape consumer search-result HTML or bypass CAPTCHAs and anti-bot controls.
+Search to a bounded, user-configurable depth using business name, domain, city, address, and contact-related terms.
+Validate every result before extracting contact data.
+Preserve exact source URLs.
+Label external candidates distinctly from business-website candidates.
+Cache results.
+Respect provider rate limits and terms.
+Provide an actionable “Search provider not configured” state rather than pretending a search occurred.
+Never let an AI model fabricate a candidate. AI may assist in ranking only candidates that were deterministically found and source-attributed.
+R11 — Multiple Contact Candidates and Primary Selection
+
+When multiple emails or contact forms are found:
+
+Preserve all candidates in the result.
+Display all candidates in Selected Result and exported standalone HTML.
+Label which came from the prospect’s own website and which came from external discovery.
+Display confidence and ranking reasons.
+Allow the user to override the primary email/contact form.
+Persist manual overrides.
+Use deterministic ranking to select a default primary candidate.
+Never overwrite a manual choice during re-research unless the chosen candidate is explicitly removed by the user.
+
+For .eml generation:
+
+Put only the selected/highest-confidence primary email in the To: header.
+Do not include secondary or low-confidence candidates.
+If no primary email exists, do not generate a misleading .eml with an empty or contact-form URL recipient. Include the contact-form link in the manifest or HTML export instead.
+R12 — Move User Persistence into the Browser
+
+Migrate persistent user data away from SQLite/server files into browser-owned storage.
+
+The browser must become the source of truth for:
+
+Projects.
+Prospect records.
+Prompt templates.
+Addenda.
+Results and result versions.
+Jobs and processing state.
+Research cache.
+Contact candidates and manual selections.
+Model catalog cache and UI selection.
+Provider status cache.
+Configuration.
+Pane dimensions.
+Tutorial state.
+Delivery history.
+Suppression data.
+Imported files and generated artifacts when retained.
+Encrypted secrets.
+
+Use storage intentionally:
+
+IndexedDB for structured transactional data and Blobs.
+OPFS for large-file/blob storage when supported and beneficial.
+IndexedDB Blob fallback when OPFS is unavailable.
+localStorage only for small, non-sensitive bootstrap/UI preferences.
+Never store secrets, large datasets, generated email bodies, or addenda in localStorage.
+
+Implement:
+
+A browser data-access layer.
+Explicit schema versions.
+Atomic migrations.
+Stable identifiers.
+Indexes for project, record, result, status, updated time, and contact lookup.
+Transactional multi-store updates.
+Storage quota estimation.
+A navigator.storage.persist() request where supported.
+User-visible storage usage and persistence status.
+Quota/eviction warnings.
+Recovery after interrupted upgrades.
+Graceful handling of private browsing or unavailable storage.
+
+The Express server may remain as a loopback execution gateway for capabilities the browser cannot safely or reliably perform, including:
+
+AI-provider proxying.
+Headless Chromium research.
+OpenRouter/Ollama discovery when CORS requires it.
+Resend requests.
+Rotating operational logs.
+Read-only legacy migration.
+
+However:
+
+It must no longer be the persistent source of truth for user projects and generated results.
+It must not write ordinary exports to a server directory and call that a browser export.
+Request data should be ephemeral unless explicitly required.
+Any credential supplied by the browser must be held only in process memory for the unlocked session and never written to disk.
+Existing environment-variable credentials may remain an optional compatibility fallback, but the UI must support user-managed credentials.
+
+Provide a legacy migration wizard:
+
+Detect existing SQLite data.
+Explain what will be imported.
+Import it into browser storage.
+Validate record counts and checksums.
+Avoid deleting the original database automatically.
+Allow the user to export a backup first.
+Make migration idempotent.
+R12A — Import and Export at Every Scope
+
+In Configuration, support import/export for:
+
+Everything.
+A selected category.
+A selected project.
+A selected template.
+A selected addendum.
+A selected result.
+Settings only.
+Credentials only, using encrypted export.
+Logs/diagnostics.
+
+Create a documented portable archive format containing:
+
+manifest.json
+Archive/schema version.
+Application version.
+Export timestamp.
+Included categories.
+Counts.
+Checksums.
+Content files.
+Migration metadata.
+
+Import must provide:
+
+Archive validation.
+Preview of affected categories and counts.
+Conflict choices: merge, replace, duplicate, or skip.
+Schema migration.
+Progress.
+Cancellation before commit.
+Transactional rollback on failure.
+Protection against path traversal, malformed archives, oversized payloads, prototype pollution, and invalid data.
+
+Secrets must be excluded by default. If the user explicitly includes them, encrypt the secret bundle with a user-supplied passphrase and a versioned authenticated-encryption envelope.
+
+Credential Storage and Threat Model
+
+Do not claim that API keys embedded in browser JavaScript are secret.
+
+Implement a local encrypted credential vault:
+
+Encrypt secrets at rest with Web Crypto authenticated encryption, such as AES-GCM.
+Derive encryption keys from a passphrase using a versioned, salted KDF.
+Use unique nonces/IVs.
+Keep the unlocked key in memory only.
+Support lock, unlock, auto-lock, and clear-secrets-without-clearing-projects.
+Mask secret values by default.
+Never return them from configuration APIs.
+Never write them to logs.
+Never place them in URLs.
+Never include them in normal backups.
+Clearly explain that an unlocked browser session or successful XSS could access in-memory credentials.
+Strengthen CSP, sanitization, same-origin checks, CSRF protection, and loopback binding accordingly.
+
+For providers requiring a local backend:
+
+Transfer unlocked credentials only to the loopback backend through a same-origin protected session.
+Keep them in backend memory only.
+Return an opaque local session identifier.
+Clear backend credentials when the vault locks, the session expires, or the process stops.
+Redact request headers and bodies from logs.
+R13 — Resend Integration
+
+Research and implement current Resend behavior using official documentation and the official Node.js SDK or documented HTTP API.
+
+Configuration must support:
+
+API key.
+From name.
+From address.
+Reply-To.
+Verified-domain status.
+Test connection.
+Test-recipient mode.
+Batch size.
+Rate-limit behavior.
+Optional webhook configuration.
+Optional compliant unsubscribe configuration.
+Clear validation and setup help.
+
+Sending workflow:
+
+Send current, selected, or otherwise explicitly scoped eligible results.
+Show an exact preflight list.
+Exclude results without a primary email.
+Detect duplicates.
+Show sender, recipient count, excluded count, and estimated batches.
+Require final human confirmation.
+Use idempotency keys.
+Use batches of no more than the current documented Resend limit.
+Respect rate-limit headers and Retry-After.
+Retry only transient 429/5xx/network failures.
+Never retry permanent validation, domain, or recipient errors automatically.
+Persist per-result Resend IDs and delivery state in browser storage.
+Provide retry and refresh controls.
+Prevent duplicate sends after reload or ambiguous timeout.
+Use the exact sanitized HTML/plain-text content displayed in the editor.
+
+Webhook support:
+
+Verify signatures using the current documented Resend mechanism.
+Handle duplicate webhook delivery idempotently.
+Record sent, delivered, delayed, bounced, complained, failed, and suppressed events.
+Explain that a loopback server is not publicly reachable.
+If no public webhook endpoint is configured, offer polling/manual refresh where supported instead of implying webhooks work.
+Never advise exposing the local server without authentication and signature verification.
+
+Compliance is mandatory:
+
+Re-check Resend’s current Acceptable Use Policy during implementation.
+Resend currently prohibits sending to unsolicited recipients and requires explicit opt-in for bulk mail.
+Do not permit scraped or externally discovered addresses to be sent through Resend unless the record contains verifiable consent evidence that satisfies current Resend policy.
+Add consent-status, consent-source, and consent-timestamp fields.
+Keep copy/export/manual-contact workflows available for records not eligible for Resend.
+Provide suppression handling.
+Require valid company/address identification and a frictionless opt-out mechanism for bulk sending.
+Do not provide a bypass for provider policy or applicable law.
+R15 — Compact Generated Results Table
+
+Reduce excessive whitespace in Generated Results.
+
+Implement:
+
+Compact row height.
+Tighter but readable columns.
+Sticky headers.
+Useful columns such as selection, record, contact status, generation status, subject, provider/model, updated time, and delivery state.
+User-configurable column visibility.
+Sorting and filtering.
+Horizontal scrolling only when required.
+Accessible selection count and bulk toolbar.
+Clear selected and active row states.
+Full subject/content access without forcing extremely wide columns.
+R16 — Complete Configuration Dialog
+
+Add a keyboard-accessible Configuration dialog or full-screen settings window.
+
+Recommended sections:
+
+General.
+AI Providers.
+Model Catalog and Pricing.
+OpenRouter.
+Ollama.
+Resend.
+Research and Search.
+Storage and Backups.
+Templates and Addenda.
+Logging and Diagnostics.
+Accessibility.
+Tutorial.
+Advanced.
+
+The dialog must support:
+
+All settings needed to run the app.
+Provider credentials.
+Test Connection controls.
+Field validation and help.
+Save, Apply, Cancel, Reset Section, and Reset All.
+Unsaved-change warnings.
+Import/export at all scopes.
+Storage use and persistence status.
+Schema/application version.
+Log level and diagnostics export.
+Tutorial restart.
+Secure secret masking and vault lock/unlock.
+Proper focus trapping and focus restoration.
+Escape-to-close only when it will not discard unsaved work silently.
+R17 — Copy Email Address
+
+Add Copy Email Address next to Copy Subject and Copy Rendered Email.
+
+Behavior:
+
+Copy the selected result’s primary email.
+Use the same primary email used for .eml output.
+Disable the button when no primary email exists.
+If multiple emails exist, provide an adjacent chooser or candidate menu without changing the button’s basic behavior.
+Announce success or failure through an ARIA live region.
+Provide a Clipboard API fallback where appropriate.
+R18 — Equal Results-Section Bottom Alignment
+
+Generated Results and Selected Result must:
+
+Stretch to equal height.
+Meet the footer evenly.
+Avoid unmatched whitespace.
+Use internal scrolling for long tables or emails.
+Remain aligned after resizing, filtering, result switching, and viewport changes.
+
+Use a page layout that keeps the footer in the normal document flow and at the bottom of short pages.
+
+R19 — First-Run Walkthrough
+
+Add an accessible first-run walkthrough focused on the practical workflow:
+
+Import prospect data.
+Choose or create a template.
+Select an AI model.
+Configure addendum/research.
+Process records.
+Review and edit results.
+Choose a contact method.
+Copy, export, or send eligible messages.
+
+Requirements:
+
+Do not explain every control.
+Assume the user is technically competent and motivated to produce customized batch emails.
+Provide Back, Next, Skip, Finish, and progress.
+Manage focus correctly.
+Do not obscure the highlighted control.
+Support keyboard and screen readers.
+Respect reduced motion.
+Open help links in a new tab with secure link attributes.
+Use links where additional context is genuinely helpful.
+Store completion state in browser settings.
+Version the walkthrough so major workflow changes may offer it again.
+Allow restart from Configuration.
+R20 — Fix Export Completed
+
+The current Export Completed workflow appears to receive a server-side filename and update the status line without initiating a browser download. Confirm this against the current code.
+
+Fix the entire export path:
+
+The browser must receive the generated .html or .zip.
+Use an actual response download, Blob URL, streamed response, or client-side archive generation.
+Set correct MIME type and Content-Disposition.
+Use deterministic safe filenames.
+Revoke temporary Blob URLs.
+Do not leave temporary server files behind unnecessarily.
+Handle popup/download restrictions.
+Report success only after download initiation succeeds.
+Report failure with an actionable message.
+
+Add an E2E regression test that listens for and validates the Playwright download event. Inspect ZIP contents and exported HTML rather than testing only the API JSON response.
+
+R21 — Ollama Discovery and Generation
+
+Detect a locally running Ollama service and include it in Model Catalog.
+
+Requirements:
+
+Probe only approved loopback URLs, beginning with http://127.0.0.1:11434.
+Use a short bounded timeout.
+Call the official model-list endpoint, currently GET /api/tags.
+Do not treat Ollama absence as an application error.
+Show Not Detected, Detected, Unavailable, or Error status.
+Provide a manual Refresh/Detect action.
+List installed models and metadata.
+Mark pricing as local compute rather than hosted token pricing.
+Integrate generation through the existing ai-powered boundary or a documented adapter behind the same application interface.
+Use Ollama’s OpenAI-compatible API when appropriate.
+Verify structured-output compatibility instead of assuming every installed model supports it.
+Keep incompatible/unknown models visible with explanatory status.
+Support user-configured Ollama host only if it passes a strict allowlist and explicit security confirmation.
+Do not weaken research SSRF defenses.
+Provide setup guidance for Ollama origins/CORS only when direct browser access is actually used.
+
+Test Ollama present, absent, slow, malformed, incompatible-model, and successful structured-output cases without requiring a real local model in CI.
+
+R22 — OpenRouter Provider and Models
+
+Add OpenRouter as a first-class provider.
+
+Implement:
+
+Secure OPENROUTER_API_KEY configuration through the encrypted vault.
+OpenAI-compatible base URL: https://openrouter.ai/api/v1.
+Optional documented attribution headers.
+Live model discovery through GET /api/v1/models.
+Provider/model identifiers exactly as returned.
+Input/output modalities.
+Context length.
+Supported parameters.
+Structured-output compatibility.
+Availability/expiration information.
+Dynamic pricing, including cache/search/tier overrides.
+Model search, filters, favorites, and selection.
+Optional OpenRouter provider-routing settings.
+Manual refresh and cache TTL.
+Last-known-good fallback.
+Clear stale status.
+Test Connection.
+Usage/cost metadata when returned.
+
+Do not assume that every OpenRouter text model supports the structured JSON required by the app. Use explicit metadata such as supported parameters and a conservative compatibility policy.
+
+Preserve ai-powered as the normal application-facing boundary. If ai-powered cannot represent multiple named OpenAI-compatible profiles cleanly:
+
+Add a well-tested adapter behind the same internal provider interface.
+Do not fork or monkey-patch the dependency.
+Document the limitation and architectural decision.
+Preserve the mock provider for cost-free tests.
+Shared Email Rendering Pipeline
+
+Create one canonical rendering service used by:
+
+Visual editor.
+Raw editor.
+Copy Rendered Email.
+Copy HTML.
+Copy Plain Text.
+Print.
+Standalone HTML export.
+ZIP export.
+Delivery kits.
+.eml.
+Resend.
+
+The pipeline must:
+
+Compose body, addendum, signature, footer, and result-specific edits deterministically.
+Inline supported email CSS.
+Sanitize after composition.
+Generate a plain-text equivalent.
+Preserve UTF-8.
+Block scripts, event handlers, unsafe URLs, forms inside the sent email, tracking pixels, and unsafe CSS.
+Avoid duplicate signatures/addenda.
+Keep application-only contact controls outside the email body.
+Use conservative email-safe table/inline styles where necessary.
+Create version snapshots after manual edits.
+Preserve addenda after save/regenerate operations.
+Prevent the preview from differing silently from export/send output.
+Logging and Diagnostics
+
+Retain and improve comprehensive logging to:
+
+Browser developer console.
+Rotating external application log file.
+Optional in-app diagnostics viewer/export.
+
+Capture structured events for:
+
+Startup/shutdown.
+Browser database opening and migrations.
+Imports/exports.
+Template CRUD.
+Model discovery and pricing refresh.
+Ollama detection.
+OpenRouter calls.
+Research/navigation/contact discovery.
+Job lifecycle.
+Per-record failures.
+Email rendering and sanitization warnings.
+Result edits/version changes.
+Clipboard/download operations.
+Resend preflight/send/status events.
+Configuration changes.
+Unhandled browser and server errors.
+
+Include:
+
+Timestamp.
+Level.
+Event name.
+Request/job/project/result identifiers.
+Correlation/request ID.
+Safe structured metadata.
+
+Never log:
+
+API keys.
+Authorization headers.
+Vault passphrases.
+Full secret-bearing requests.
+Unredacted credential imports.
+Full generated email or research content by default.
+Personal contact information unless an explicit diagnostic mode is enabled and the user is warned.
+
+Forward safe browser events to a protected loopback logging endpoint when external file logging is enabled.
+
+Graceful Error Handling and Fallbacks
+
+Provide explicit error boundaries and actionable statuses.
+
+Required examples:
+
+IndexedDB unavailable → explain browser requirements and permit safe temporary mode if feasible.
+Storage quota exceeded → show usage and backup/cleanup options.
+Migration failure → roll back and retain legacy data.
+Provider credential missing → direct user to Configuration.
+Model unavailable → preserve selection and suggest alternatives.
+Pricing refresh failure → show stale last-known-good pricing.
+Ollama absent → continue with other providers.
+Website research failure → continue generation with research marked unavailable.
+Search provider absent → provide manual contact workflow.
+One record failure → continue the batch.
+Export download failure → retain generated data and offer retry.
+Clipboard denial → provide selectable fallback text.
+Resend partial failure → preserve per-recipient status and prevent duplicate resend.
+Browser refresh during processing → recover persisted job state and mark ambiguous in-flight work for review rather than duplicating it.
+
+Use stable machine-readable error codes plus readable messages.
+
+Security Requirements
+
+Preserve or add tests for:
+
+SSRF and DNS rebinding defenses.
+Redirect revalidation.
+XSS through imported fields, templates, AI output, addenda, and research.
+Prompt injection in scraped website content.
+HTML/CSS sanitization.
+Unsafe URL schemes.
+Email header injection.
+Path traversal.
+Malicious filenames.
+ZIP traversal and decompression bombs.
+Oversized imports.
+Prototype pollution.
+Credential leakage.
+Log redaction.
+CSRF and Origin checks on the loopback server.
+CSP.
+Rate limiting.
+Untrusted backup/import payloads.
+Unsafe OpenRouter/custom-provider base URLs.
+Ollama-specific loopback allowlisting.
+Webhook signature verification.
+Resend duplicate-send protection.
+Testing Requirements
+
+Expand the existing suite rather than replacing it.
+
+Unit Tests
+
+Cover:
+
+Flattened dynamic record columns.
+Prompt-variable column priority.
+Template CRUD and versions.
+Split-pane clamping and persistence.
+Model selection.
+Pricing normalization and stale handling.
+OpenRouter metadata normalization.
+Ollama model normalization.
+Contact extraction, deduplication, scoring, and overrides.
+Email HTML preparation and sanitization.
+Addendum CSS inlining.
+En-dash encoding.
+Plain-text generation.
+Backup manifest and checksums.
+Encryption envelope operations.
+Export filename safety.
+Resend eligibility and idempotency.
+Error-code mapping and log redaction.
+Integration Tests
+
+Cover:
+
+Browser-storage repositories.
+Schema migrations.
+Legacy SQLite import.
+Template and addendum import/export.
+Model synchronization/fallback.
+Headless contact discovery using controlled fixture websites.
+Search fallback using mocked official APIs.
+Processing with mock AI.
+Shared preview/export/send rendering.
+Browser-to-loopback credential sessions.
+OpenRouter and Ollama mocked endpoints.
+Resend single, batch, partial failure, 429, retry, and idempotency behavior.
+Webhook verification and duplicate events.
+Edge and Regression Tests
+
+Include:
+
+Empty datasets.
+One record.
+Thousands of records.
+Inconsistent record schemas.
+Deep/nested objects.
+Very long values.
+Unicode and right-to-left text.
+Duplicate emails.
+Obfuscated emails.
+Multiple forms.
+No contact method.
+Redirect loops.
+Slow pages.
+JavaScript-rendered contacts.
+Malicious page content.
+Missing pricing.
+Variable pricing.
+Selected model disappearing after refresh.
+Storage quota failure.
+Interrupted migration.
+Invalid backup archive.
+Vault locked during processing.
+Editor mode switching with unsaved changes.
+Result deletion while selected.
+Export Completed download.
+Specific ai-sms-email-blurb.html centering and $1–$1.50 rendering.
+E2E Tests
+
+Use Playwright to verify the complete workflow:
+
+Launch a fresh application.
+Complete or skip the walkthrough.
+Import a dataset.
+Inspect the dynamic records table.
+Resize all three split panes with mouse and keyboard.
+Create and save a template.
+Select a model from Model Catalog.
+Process records with the mock provider.
+Review a result.
+Toggle and edit Raw HTML and Visual Email.
+Save, discard, and regenerate.
+Copy the primary email.
+Export one result.
+Export Completed and verify a real browser download.
+Inspect exported contact links.
+Open Configuration.
+Export and re-import data.
+Restart the application and verify persistence.
+
+Run accessibility checks with @axe-core/playwright or an equivalent tool and manually document keyboard verification.
+
+No default automated test may spend money or require live API credentials.
+
+Performance Requirements
+Keep initial rendering responsive with large datasets.
+Avoid loading every Blob into memory at startup.
+Use indexed queries instead of scanning all stores repeatedly.
+Bound parallel research and AI calls.
+Avoid layout thrashing while resizing.
+Debounce expensive model-table filtering and editor updates.
+Move costly parsing, archive, or OPFS operations into workers where justified.
+Measure and document the tested dataset size and browser.
+Documentation and Versioning
+
+Update or create:
+
+README.md
+CHANGELOG.md
+VERSIONS.md
+.env.example
+Architecture documentation.
+Browser-storage schema documentation.
+Migration and recovery instructions.
+Backup/archive format documentation.
+Provider setup instructions.
+OpenRouter setup.
+Ollama setup.
+Resend setup and policy limitations.
+Search-provider setup.
+Security/threat-model documentation.
+Troubleshooting.
+Test instructions.
+
+Because moving persistence from SQLite to the browser is a breaking architectural change:
+
+Review the current semantic version.
+Apply an appropriate major-version increment.
+Keep application, package, browser schema, backup format, walkthrough, and migration versions explicit.
+Record version compatibility and migration paths in VERSIONS.md.
+Record every material feature and breaking change in CHANGELOG.md.
+
+Do not place real credentials in examples.
+
+Authoritative References
+
+Re-verify these and any newer official documentation at implementation time:
+
+Repository README
+Current browser application
+Current email sanitizer
+Current HTML document renderer
+AI SMS addendum
+WCAG 2.2
+WCAG 3 introduction and draft status
+IndexedDB
+Origin Private File System
+Web Crypto API
+OpenRouter Quickstart
+OpenRouter authentication
+OpenRouter live models API
+Ollama list-models API
+Ollama origins/CORS guidance
+Resend Send Email API
+Resend Batch Email API
+Resend webhook events
+Resend webhook verification
+Resend quotas and limits
+Resend Acceptable Use Policy
+Definition of Done
+
+The work is complete only when:
+
+Every requirement R1 through R22 is implemented or explicitly identified as blocked with evidence.
+The browser is the persistent source of truth for user data.
+Legacy data has a safe migration path.
+All three split panes work with mouse, touch/pointer, and keyboard.
+Template CRUD is complete.
+Model selection happens in Model Catalog.
+Pricing is source-attributed and freshness-aware.
+Processing controls are reorganized.
+The unified Raw/Visual editor is functional and both modes are editable.
+The AI SMS addendum renders correctly after embedding.
+Exported HTML contains correct contact actions.
+Contact discovery retains all candidates and provenance.
+.eml uses only the primary email.
+Configuration, encrypted credentials, and scoped backup/restore work.
+Ollama and OpenRouter are integrated.
+Resend is integrated without permitting policy-ineligible sends.
+Export Completed triggers a real local browser download.
+The footer and walkthrough are present.
+Console and rotating external logs work with redaction.
+Unit, integration, edge, regression, security, E2E, and accessibility tests pass.
+Lint and formatting checks pass.
+Documentation, CHANGELOG.md, VERSIONS.md, and version numbers are updated.
+No placeholder, TODO, mock-only production path, secret, or silent failure remains.
+Final Response Format
+
+After implementing and verifying the work, return:
+
+A concise outcome summary.
+Major architectural changes.
+A requirements traceability table for R1–R22.
+Important files added or changed.
+Migration and configuration instructions.
+Exact commands run and their results.
+Manual tests completed.
+Any remaining limitations or blockers.
+Current source links used for external integrations.
+
+Do not say that everything works unless the complete relevant test suite and user-facing workflows were actually exercised.

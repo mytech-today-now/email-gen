@@ -6,8 +6,30 @@ import { createApp } from "../../src/app.js";
 import { loadAppConfig } from "../../config/app.config.js";
 import { closeDatabase } from "../../src/persistence/database.js";
 
+function defaultHostHeader(config) {
+  return config.host.includes(":") ? `[${config.host}]:${config.port}` : `${config.host}:${config.port}`;
+}
+
+function withDefaultHeaders(request, headers) {
+  const unsafeMethods = new Set(["post", "put", "patch", "delete"]);
+  return new Proxy(request, {
+    get(target, property, receiver) {
+      const value = Reflect.get(target, property, receiver);
+      if (!unsafeMethods.has(property) || typeof value !== "function") return value;
+      return (...args) => {
+        const pending = value.apply(target, args);
+        for (const [header, headerValue] of Object.entries(headers)) {
+          pending.set(header, headerValue);
+        }
+        return pending;
+      };
+    }
+  });
+}
+
 export function createTestHarness(options = {}) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "email-gen-test-"));
+  const dir = options.dir ?? fs.mkdtempSync(path.join(os.tmpdir(), "email-gen-test-"));
+  const ownsDir = !options.dir;
   const base = loadAppConfig();
   const config = loadAppConfig({
     dataDir: path.join(dir, "storage"),
@@ -40,16 +62,30 @@ export function createTestHarness(options = {}) {
     config,
     fetchImpl: options.fetchImpl,
     browserLauncher: options.browserLauncher,
+    requestFactory: options.requestFactory,
+    resolver: options.resolver,
     logger: options.logger,
-    modelDiscoveryAdapters: options.modelDiscoveryAdapters
+    modelDiscoveryAdapters: options.modelDiscoveryAdapters,
+    runtimeCredentials: options.runtimeCredentials
   });
+  const rawRequest = supertest(harness.app);
+  const hostHeader = defaultHostHeader(config);
   return {
     ...harness,
-    request: supertest(harness.app),
+    request: withDefaultHeaders(rawRequest, {
+      host: hostHeader,
+      "x-email-gen-csrf": harness.context.csrfToken
+    }),
+    rawRequest: withDefaultHeaders(rawRequest, {
+      host: hostHeader
+    }),
     dir,
     cleanup() {
+      if (harness.context.modelSyncTimer) clearInterval(harness.context.modelSyncTimer);
+      harness.context.logger?.flush?.();
+      harness.context.logger?.close?.();
       closeDatabase(harness.context.db);
-      fs.rmSync(dir, { recursive: true, force: true });
+      if (ownsDir) fs.rmSync(dir, { recursive: true, force: true });
     }
   };
 }

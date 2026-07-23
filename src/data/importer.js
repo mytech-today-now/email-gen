@@ -4,9 +4,41 @@ import * as XLSX from "@e965/xlsx";
 import { AppError } from "../utils/errors.js";
 import { normalizeRecords } from "./normalizer.js";
 import { parseStaticJavaScriptData } from "./formats/staticJsParser.js";
+import { fetchDocument } from "../research/secureDocumentFetcher.js";
+
+const GOOGLE_SHEETS_CONTENT_TYPES =
+  /^(?:text\/csv|text\/plain|application\/csv|application\/vnd\.ms-excel)\b/i;
 
 function extOf(filename = "") {
   return path.extname(filename).toLowerCase();
+}
+
+function lineColumnForOffset(source, offset) {
+  const safeOffset = Math.max(0, Math.min(Number(offset) || 0, source.length));
+  const lines = source.slice(0, safeOffset).split(/\r?\n/);
+  return {
+    line: lines.length,
+    column: (lines.at(-1)?.length ?? 0) + 1,
+    offset: safeOffset
+  };
+}
+
+function jsonErrorDetails(error, source) {
+  const message = String(error?.message || "Invalid JSON.");
+  const explicit = message.match(/\(line\s+(\d+)\s+column\s+(\d+)\)/i);
+  if (explicit) {
+    return {
+      parserMessage: message,
+      line: Number.parseInt(explicit[1], 10),
+      column: Number.parseInt(explicit[2], 10)
+    };
+  }
+  const position = message.match(/position\s+(\d+)/i);
+  if (!position) return { parserMessage: message };
+  return {
+    parserMessage: message,
+    ...lineColumnForOffset(source, Number.parseInt(position[1], 10))
+  };
 }
 
 function recordsFromJson(parsed) {
@@ -60,8 +92,25 @@ export function parseImportBuffer({ buffer, filename, limits }) {
     if ([".csv"].includes(extension)) records = parseDelimited(buffer, ",");
     else if ([".tsv", ".tab"].includes(extension)) records = parseDelimited(buffer, "\t");
     else if ([".txt"].includes(extension)) records = parseDelimited(buffer, detectDelimiter(buffer));
-    else if ([".json"].includes(extension)) records = recordsFromJson(JSON.parse(buffer.toString("utf8")));
-    else if ([".js", ".mjs"].includes(extension))
+    else if ([".json"].includes(extension)) {
+      const source = buffer.toString("utf8");
+      let parsed;
+      try {
+        parsed = JSON.parse(source);
+      } catch (error) {
+        const details = jsonErrorDetails(error, source);
+        const location =
+          details.line && details.column ? ` at line ${details.line}, column ${details.column}` : "";
+        throw new AppError(
+          "IMPORT_JSON_INVALID",
+          `Could not parse '${filename}' as JSON${location}. Expected a JSON array of objects or an object containing records/items/rows/data.`,
+          400,
+          details,
+          { publicDetails: true }
+        );
+      }
+      records = recordsFromJson(parsed);
+    } else if ([".js", ".mjs"].includes(extension))
       records = recordsFromJson(parseStaticJavaScriptData(buffer.toString("utf8")));
     else if ([".xls", ".xlsx", ".ods"].includes(extension)) records = parseSpreadsheet(buffer);
     else if (extension === ".numbers") {
@@ -90,16 +139,19 @@ export function parseImportBuffer({ buffer, filename, limits }) {
   }
 }
 
-export async function parseGoogleSheetsCsvUrl(url, { limits, fetchImpl = fetch }) {
-  const parsed = new URL(url);
-  if (!["http:", "https:"].includes(parsed.protocol)) {
-    throw new AppError("INVALID_GOOGLE_SHEET_URL", "Google Sheets CSV URL must use http or https.", 400);
-  }
-  const response = await fetchImpl(parsed, { redirect: "follow" });
-  if (!response.ok) {
-    throw new AppError("GOOGLE_SHEET_FETCH_FAILED", `CSV export returned HTTP ${response.status}.`, 400);
-  }
-  const arrayBuffer = await response.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
+export async function parseGoogleSheetsCsvUrl(url, { limits, requestFactory, resolver, logger } = {}) {
+  const fetched = await fetchDocument(url, {
+    requestFactory,
+    resolver,
+    logger,
+    timeoutMs: 8000,
+    maxHeaderBytes: 16 * 1024,
+    maxResponseBytes: limits.uploadBytes,
+    maxPageBytes: limits.uploadBytes,
+    maxRedirects: 5,
+    contentTypePattern: GOOGLE_SHEETS_CONTENT_TYPES,
+    allowAttachmentDisposition: true
+  });
+  const buffer = Buffer.from(fetched.body, "utf8");
   return parseImportBuffer({ buffer, filename: "google-sheet.csv", limits });
 }

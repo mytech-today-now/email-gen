@@ -106,7 +106,9 @@ export function dataRoutes(context) {
       }
       const parsed = await parseGoogleSheetsCsvUrl(req.body.url, {
         limits: context.config.limits,
-        fetchImpl: context.fetchImpl
+        requestFactory: context.requestFactory,
+        resolver: context.resolver,
+        logger: context.logger
       });
       const project = context.repositories.projects.createForImport({
         records: parsed.records,

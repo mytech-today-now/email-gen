@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createTestHarness } from "../helpers/appTestHarness.js";
 
-const envKeys = ["AI_MOCK", "ENABLED_AI_PROVIDERS", "XAI_API_KEY", "DEFAULT_AI_PROVIDER", "DEFAULT_AI_MODEL"];
+const envKeys = ["AI_MOCK", "ENABLED_AI_PROVIDERS", "DEFAULT_AI_PROVIDER", "DEFAULT_AI_MODEL"];
 let previousEnv;
 let harness;
 
@@ -68,7 +68,6 @@ beforeEach(() => {
   previousEnv = Object.fromEntries(envKeys.map((key) => [key, process.env[key]]));
   process.env.AI_MOCK = "true";
   process.env.ENABLED_AI_PROVIDERS = "xai,mock";
-  process.env.XAI_API_KEY = "xai-test-secret";
   process.env.DEFAULT_AI_PROVIDER = "mock";
   process.env.DEFAULT_AI_MODEL = "mock-structured-v1";
 });

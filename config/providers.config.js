@@ -139,6 +139,8 @@ const VENICE_MODELS = [
     dynamicFallback: true
   }),
   model("qwen-2.5-vl", "Qwen 2.5 VL", ["text", "structured"], { dynamicFallback: true }),
+  model("venice-uncensored", "venice-uncensored", ["text", "structured"], { dynamicFallback: true }),
+  model("llama-3.2-3b", "Llama 3.2 3b", ["text", "structured"], { dynamicFallback: true }),
   model("venice-sd-3.5", "Venice SD 3.5", ["image"], { dynamicFallback: true }),
   model("fluently-xl", "Fluently XL", ["image"], { dynamicFallback: true })
 ];
@@ -184,32 +186,28 @@ export function loadProviderConfig(appConfig) {
       id: "openai",
       label: "OpenAI",
       enabled: enabledProviders.includes("openai"),
-      apiKeyEnv: "OPENAI_API_KEY",
-      hasCredential: Boolean(process.env.OPENAI_API_KEY),
+      credentialId: "openai",
       models: modelsFromEnv("ENABLED_OPENAI_MODELS", OPENAI_MODELS)
     },
     anthropic: {
       id: "anthropic",
       label: "Anthropic Claude",
       enabled: enabledProviders.includes("anthropic"),
-      apiKeyEnv: "ANTHROPIC_API_KEY",
-      hasCredential: Boolean(process.env.ANTHROPIC_API_KEY),
+      credentialId: "anthropic",
       models: modelsFromEnv("ENABLED_ANTHROPIC_MODELS", ANTHROPIC_MODELS)
     },
     xai: {
       id: "xai",
       label: "xAI Grok",
       enabled: enabledProviders.includes("xai"),
-      apiKeyEnv: "XAI_API_KEY",
-      hasCredential: Boolean(process.env.XAI_API_KEY),
+      credentialId: "xai",
       models: modelsFromEnv("ENABLED_XAI_MODELS", XAI_MODELS)
     },
     venice: {
       id: "venice",
       label: "Venice.ai",
       enabled: enabledProviders.includes("venice"),
-      apiKeyEnv: "VENICE_API_KEY",
-      hasCredential: Boolean(process.env.VENICE_API_KEY),
+      credentialId: "venice",
       supportsDynamicModels: true,
       models: modelsFromEnv("ENABLED_VENICE_MODELS", VENICE_MODELS)
     },
@@ -217,16 +215,14 @@ export function loadProviderConfig(appConfig) {
       id: "lumaai",
       label: "Luma AI",
       enabled: enabledProviders.includes("lumaai"),
-      apiKeyEnv: "LUMAAI_API_KEY",
-      hasCredential: Boolean(process.env.LUMAAI_API_KEY),
+      credentialId: "lumaai",
       models: modelsFromEnv("ENABLED_LUMAAI_MODELS", LUMAAI_MODELS, ["video"])
     },
     custom: {
       id: "custom",
       label: customProviderType === "ollama" ? "Custom/Ollama" : "Custom provider",
       enabled: enabledProviders.includes("custom"),
-      apiKeyEnv: "AI_CUSTOM_API_KEY",
-      hasCredential: customProviderType === "ollama" || Boolean(customBaseUrl),
+      credentialId: "custom",
       requiresBaseUrl: customProviderType !== "ollama",
       baseUrlConfigured: Boolean(customBaseUrl),
       customProviderType,
@@ -237,8 +233,7 @@ export function loadProviderConfig(appConfig) {
       id: "mock",
       label: "Mock provider",
       enabled: enabledProviders.includes("mock") || process.env.NODE_ENV === "test",
-      apiKeyEnv: null,
-      hasCredential: true,
+      credentialId: "mock",
       models: modelsFromEnv("ENABLED_MOCK_MODELS", MOCK_MODELS)
     }
   };
@@ -254,7 +249,7 @@ export function loadProviderConfig(appConfig) {
   });
 }
 
-export function publicProviderConfig(providerConfig) {
+export function publicProviderConfig(providerConfig, runtimeCredentials = null) {
   return {
     defaultProvider: providerConfig.defaultProvider,
     defaultModel: providerConfig.defaultModel,
@@ -263,8 +258,13 @@ export function publicProviderConfig(providerConfig) {
       .map((provider) => ({
         id: provider.id,
         label: provider.label,
-        hasCredential: provider.hasCredential,
-        apiKeyEnv: provider.apiKeyEnv,
+        credentialStatus:
+          runtimeCredentials?.publicState(provider.credentialId)?.status ??
+          (provider.id === "mock" ? "valid" : "not-configured"),
+        hasCredential:
+          provider.id === "mock"
+            ? true
+            : Boolean(runtimeCredentials?.publicState(provider.credentialId)?.configured),
         requiresBaseUrl: Boolean(provider.requiresBaseUrl),
         baseUrlConfigured: Boolean(provider.baseUrlConfigured),
         customProviderType: provider.customProviderType,

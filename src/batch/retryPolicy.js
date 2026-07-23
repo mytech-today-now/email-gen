@@ -12,20 +12,21 @@ export function backoffDelay(attempt, config) {
   return Math.min(config.ai.backoffMaxMs, exponential);
 }
 
-export async function withRetry(operation, config, logger) {
+export async function withRetry(operation, config, logger, signal = null) {
   let lastError;
   for (let attempt = 1; attempt <= config.ai.maxRetries + 1; attempt += 1) {
     try {
       return await operation(attempt);
     } catch (error) {
       lastError = error;
+      if (signal?.aborted) throw signal.reason ?? error;
       if (attempt > config.ai.maxRetries || !isTransientError(error)) throw error;
       const delay = backoffDelay(attempt, config);
       logger.warn(
         { attempt, delay, code: error.code, status: error.status },
         "Transient processing failure; retrying"
       );
-      await sleep(delay);
+      await sleep(delay, signal);
     }
   }
   throw lastError;

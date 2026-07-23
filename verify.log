@@ -1,0 +1,137 @@
+> npm run format:check
+
+> ai-batch-personalizer@2.0.0 format:check
+> prettier --check .
+
+Checking formatting...
+All matched files use Prettier code style!
+> npm run lint
+
+> ai-batch-personalizer@2.0.0 lint
+> eslint .
+
+> npm run scan:secrets
+
+> ai-batch-personalizer@2.0.0 scan:secrets
+> node scripts/scan-secrets.js
+
+No committed secret patterns detected.
+> npm run test:coverage
+
+> ai-batch-personalizer@2.0.0 test:coverage
+> cross-env NODE_ENV=test AI_MOCK=true vitest run --coverage
+
+
+ RUN  v4.1.10 C:/Users/kyle_/OneDrive/Documents/email-gen
+      Coverage enabled with v8
+
+[2026-07-23 06:31:59.111 -0500] INFO (ai-powered): [ai-powered] AI call completed
+    modality: "structured"
+    model: "mock-structured-v1"
+    provider: "mock"
+    costUsd: "0.000278"
+    isEstimate: false
+    cumulativeCostUsd: "0.000278"
+    latencyMs: 1
+    promptTokens: 42
+    completionTokens: 118
+    totalTokens: 160
+[2026-07-23 06:32:23.800 -0500] INFO (ai-powered): [ai-powered] AI call completed
+    modality: "structured"
+    model: "mock-structured-v1"
+    provider: "mock"
+    costUsd: "0.000278"
+    isEstimate: false
+    cumulativeCostUsd: "0.000278"
+    latencyMs: 1
+    promptTokens: 42
+    completionTokens: 118
+    totalTokens: 160
+[2026-07-23 06:32:24.191 -0500] INFO (ai-powered): [ai-powered] AI call completed
+    modality: "structured"
+    model: "mock-structured-v1"
+    provider: "mock"
+    costUsd: "0.000278"
+    isEstimate: false
+    cumulativeCostUsd: "0.000278"
+    latencyMs: 1
+    promptTokens: 42
+    completionTokens: 118
+    totalTokens: 160
+[2026-07-23 06:32:24.334 -0500] INFO (ai-powered): [ai-powered] AI call completed
+    modality: "structured"
+    model: "mock-structured-v1"
+    provider: "mock"
+    costUsd: "0.000278"
+    isEstimate: false
+    cumulativeCostUsd: "0.000278"
+    latencyMs: 1
+    promptTokens: 42
+    completionTokens: 118
+    totalTokens: 160
+[2026-07-23 06:32:24.341 -0500] INFO (ai-powered): [ai-powered] AI call completed
+    modality: "structured"
+    model: "mock-structured-v1"
+    provider: "mock"
+    costUsd: "0.000278"
+    isEstimate: false
+    cumulativeCostUsd: "0.000278"
+    latencyMs: 1
+    promptTokens: 42
+    completionTokens: 118
+    totalTokens: 160
+[2026-07-23 06:32:24.349 -0500] INFO (ai-powered): [ai-powered] AI call completed
+    modality: "structured"
+    model: "mock-structured-v1"
+    provider: "mock"
+    costUsd: "0.000278"
+    isEstimate: false
+    cumulativeCostUsd: "0.000278"
+    latencyMs: 1
+    promptTokens: 42
+    completionTokens: 118
+    totalTokens: 160
+[2026-07-23 06:32:24.356 -0500] INFO (ai-powered): [ai-powered] AI call completed
+    modality: "structured"
+    model: "mock-structured-v1"
+    provider: "mock"
+    costUsd: "0.000278"
+    isEstimate: false
+    cumulativeCostUsd: "0.000278"
+    latencyMs: 1
+    promptTokens: 42
+    completionTokens: 118
+    totalTokens: 160
+[2026-07-23 06:32:24.542 -0500] INFO (ai-powered): [ai-powered] AI call completed
+    modality: "structured"
+    model: "mock-structured-v1"
+    provider: "mock"
+    costUsd: "0.000278"
+    isEstimate: false
+    cumulativeCostUsd: "0.000278"
+    latencyMs: 1
+    promptTokens: 42
+    completionTokens: 118
+    totalTokens: 160
+[2026-07-23 06:32:26.030 -0500] INFO (ai-powered): [ai-powered] AI call completed
+    modality: "structured"
+    model: "mock-structured-v1"
+    provider: "mock"
+    costUsd: "0.000278"
+    isEstimate: false
+    cumulativeCostUsd: "0.000278"
+    latencyMs: 1
+    promptTokens: 42
+    completionTokens: 118
+    totalTokens: 160
+[2026-07-23 06:32:26.035 -0500] INFO (ai-powered): [ai-powered] AI call completed
+    modality: "structured"
+    model: "mock-structured-v1"
+    provider: "mock"
+    costUsd: "0.000278"
+    isEstimate: false
+    cumulativeCostUsd: "0.000278"
+    latencyMs: 1
+    promptTokens: 42
+    completionTokens: 118
+    totalTokens: 160

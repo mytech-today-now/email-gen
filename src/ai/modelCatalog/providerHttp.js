@@ -1,5 +1,8 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { redactSecrets } from "../../utils/logger.js";
+import { readBoundedResponseText } from "../../utils/responseBodies.js";
+
+const JSON_CONTENT_TYPES = ["application/json", "application/*+json", "text/json"];
 
 export class ProviderDiscoveryError extends Error {
   constructor(code, message, { status = null, retryable = false, retryAfterMs = null, cause = null } = {}) {
@@ -41,21 +44,6 @@ export function backoffWithJitter(attempt, options, random = Math.random) {
   return Math.min(max, exponential + jitter);
 }
 
-async function readBoundedText(response, maxBytes) {
-  const text = await response.text();
-  if (Buffer.byteLength(text, "utf8") > maxBytes) {
-    throw new ProviderDiscoveryError(
-      "response_too_large",
-      "Provider response exceeded the configured size limit.",
-      {
-        status: response.status,
-        retryable: false
-      }
-    );
-  }
-  return text;
-}
-
 export async function fetchJsonWithRetry({
   fetchImpl,
   url,
@@ -90,15 +78,15 @@ export async function fetchJsonWithRetry({
           }
         );
       }
-      const contentType = response.headers.get("content-type") ?? "";
-      if (contentType && !/json/i.test(contentType)) {
-        throw new ProviderDiscoveryError(
-          "unexpected_content_type",
-          `Provider model discovery returned ${contentType}.`,
-          { status: response.status, retryable: false }
-        );
-      }
-      const text = await readBoundedText(response, maxResponseBytes);
+      const { text } = await readBoundedResponseText(response, {
+        maxBytes: maxResponseBytes,
+        expectedContentTypes: JSON_CONTENT_TYPES,
+        deadlineMs: timeoutMs,
+        idleTimeoutMs: timeoutMs,
+        code: "response_too_large",
+        message: "Provider response exceeded the configured size limit.",
+        status: response.status
+      });
       try {
         return JSON.parse(text);
       } catch (error) {
@@ -113,6 +101,24 @@ export async function fetchJsonWithRetry({
         );
       }
     } catch (error) {
+      if (error?.code === "response_too_large") {
+        throw new ProviderDiscoveryError(error.code, error.message, {
+          status: error.status,
+          retryable: false,
+          cause: error
+        });
+      }
+      if (error?.code === "RESPONSE_INVALID_CONTENT_TYPE") {
+        throw new ProviderDiscoveryError(
+          "unexpected_content_type",
+          "Provider model discovery returned an unsupported content type.",
+          {
+            status: error.status ?? null,
+            retryable: false,
+            cause: error
+          }
+        );
+      }
       lastError =
         error instanceof ProviderDiscoveryError
           ? error

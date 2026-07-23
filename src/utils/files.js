@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { AppError } from "./errors.js";
+import { LIMIT_DEFAULTS, utf8ByteLength } from "../../public/modules/limits.js";
 
 const RESERVED_WINDOWS_NAMES = new Set([
   "con",
@@ -54,11 +55,23 @@ export function slugify(value, fallback = "item") {
   return RESERVED_WINDOWS_NAMES.has(slug) ? `${slug}-file` : slug;
 }
 
-export function safeExportFilename({ id, name, suffix = "ai-sms", extension = ".html", maxLength = 160 }) {
+export function safeExportFilename({
+  id,
+  name,
+  suffix = "ai-sms",
+  extension = ".html",
+  maxLength = LIMIT_DEFAULTS.exportFilenameLength
+}) {
+  const byteLimit =
+    Number.isInteger(maxLength) && maxLength > 0 ? maxLength : LIMIT_DEFAULTS.exportFilenameLength;
   const idPart = id !== undefined && id !== null && `${id}` !== "" ? `${String(id).padStart(4, "0")}-` : "";
   const base = `${idPart}${slugify(name, "prospect")}-${slugify(suffix, "email")}`.replace(/-+/g, "-");
   const ext = extension.startsWith(".") ? extension : `.${extension}`;
-  const trimmed = base.slice(0, Math.max(8, maxLength - ext.length)).replace(/[-. ]+$/g, "");
+  const maxBaseBytes = Math.max(1, byteLimit - utf8ByteLength(ext));
+  let trimmed = base.replace(/[-. ]+$/g, "");
+  while (trimmed && utf8ByteLength(trimmed) > maxBaseBytes) {
+    trimmed = trimmed.slice(0, -1);
+  }
   return `${trimmed || "email"}${ext}`;
 }
 

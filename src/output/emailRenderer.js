@@ -1,5 +1,6 @@
 import { escapeHtml } from "../utils/helpers.js";
 import { sanitizeEmailHtml, textToSafeHtml, htmlToPlainText } from "./sanitizer.js";
+import { prepareAddendumHtml } from "./addendumPreparer.js";
 
 function signatureHtml(signature) {
   return escapeHtml(signature).replace(/\n/g, "<br>");
@@ -50,11 +51,39 @@ export function normalizeAiBody(bodyHtml) {
   return sanitizeEmailHtml(looksLikeHtml ? bodyHtml : textToSafeHtml(bodyHtml));
 }
 
+// The addendum is authored as a web page, but exports must work in clients
+// which ignore flex/grid. These narrowly targeted transforms provide a stable
+// table/inline-style fallback for its key calls to action before sanitization.
+export function normalizeAddendumForEmail(addendumHtml) {
+  let html = String(addendumHtml ?? "");
+  const centeredTitles = ["How It Works", "Why Restaurants Love It", "Simple Pricing"];
+  for (const title of centeredTitles) {
+    const escaped = escapeForRegex(title);
+    html = html.replace(
+      new RegExp(`<h[1-4][^>]*>\\s*${escaped}\\s*<\\/h[1-4]>`, "gi"),
+      `<h2 style="margin:0 0 16px;text-align:center;font-family:Arial,Helvetica,sans-serif;">${title}</h2>`
+    );
+  }
+  html = html.replace(
+    /<p([^>]*)>\s*per completed order\s*<\/p>/gi,
+    '<div style="text-align:center;margin:0 0 24px;"><p$1>per completed order</p></div>'
+  );
+  html = html.replace(
+    /<a([^>]*?)>\s*Call \(847\) 767-4914 to Start\s*<\/a>/gi,
+    '<div style="text-align:center;margin:24px 0;"><a$1>Call (847) 767-4914 to Start</a></div>'
+  );
+  // A middle dash in a flex baseline can sit too low in Outlook. Non-breaking
+  // spaces make the en dash an intentional inline price separator.
+  return prepareAddendumHtml(
+    html.replace(/>\s*–\s*<\/span>/g, ">&nbsp;&ndash;&nbsp;</span>")
+  ).replace(/\u00a0–\u00a0/g, "&nbsp;&ndash;&nbsp;");
+}
+
 export function renderEmailFragment({ subject, bodyHtml, addendumHtml = "", config }) {
   const safeSubject = escapeHtml(subject);
   const cleanedBody = stripAppendedEmailArtifacts(bodyHtml, config);
   const safeBody = applyEmailSpacing(normalizeAiBody(cleanedBody));
-  const safeAddendum = addendumHtml ? sanitizeEmailHtml(addendumHtml) : "";
+  const safeAddendum = addendumHtml ? normalizeAddendumForEmail(addendumHtml) : "";
   const aiSmsUrl = escapeHtml(config.business.aiSmsUrl);
   const signature = signatureHtml(config.business.signature);
   const finalLinkLabel = escapeHtml(config.business.aiSmsUrl);
@@ -64,9 +93,9 @@ export function renderEmailFragment({ subject, bodyHtml, addendumHtml = "", conf
   <tr>
     <td style="font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.52;color:#1d252c;padding:0;">
       ${safeBody}
-      ${safeAddendum ? `<div style="margin-top:18px;border-top:1px solid #d8dedc;padding-top:14px;">${safeAddendum}</div>` : ""}
       <p style="margin:18px 0 0 0;">${signature}</p>
       <p style="margin:18px 0 0 0;"><a href="${aiSmsUrl}" style="color:#0b6b6f;text-decoration:underline;">${finalLinkLabel}</a></p>
+      ${safeAddendum ? `<div style="margin-top:18px;border-top:1px solid #d8dedc;padding-top:14px;">${safeAddendum}</div>` : ""}
     </td>
   </tr>
 </table>`;
@@ -76,5 +105,5 @@ export function renderPlainText({ subject, bodyHtml, addendumHtml = "", config }
   const cleanedBody = stripAppendedEmailArtifacts(bodyHtml, config);
   const body = htmlToPlainText(cleanedBody);
   const addendum = addendumHtml ? `\n\n${htmlToPlainText(addendumHtml)}` : "";
-  return `Subject: ${subject}\n\n${body}${addendum}\n\n${config.business.signature}\n\n${config.business.aiSmsUrl}`;
+  return `Subject: ${subject}\n\n${body}\n\n${config.business.signature}\n\n${config.business.aiSmsUrl}${addendum}`;
 }

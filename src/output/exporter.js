@@ -3,6 +3,17 @@ import path from "node:path";
 import archiver from "archiver";
 import { safeExportFilename, uniquePath, ensureDir } from "../utils/files.js";
 import { renderHtmlDocument } from "./documentRenderer.js";
+import { contactCandidatesForResult } from "./contactActions.js";
+
+function writeUtf8Atomic(filePath, content) {
+  const tempPath = `${filePath}.${process.pid}.${Date.now()}.tmp`;
+  try {
+    fs.writeFileSync(tempPath, content, "utf8");
+    fs.renameSync(tempPath, filePath);
+  } finally {
+    if (fs.existsSync(tempPath)) fs.rmSync(tempPath, { force: true });
+  }
+}
 
 export function writeResultHtml(result, record, config) {
   ensureDir(config.outputDir);
@@ -13,7 +24,15 @@ export function writeResultHtml(result, record, config) {
     maxLength: config.limits.exportFilenameLength
   });
   const filePath = uniquePath(config.outputDir, filename);
-  fs.writeFileSync(filePath, renderHtmlDocument({ subject: result.subject, emailHtml: result.emailHtml, config }), "utf8");
+  writeUtf8Atomic(
+    filePath,
+    renderHtmlDocument({
+      subject: result.subject,
+      emailHtml: result.emailHtml,
+      config,
+      contactCandidates: contactCandidatesForResult(result, record)
+    })
+  );
   return { filePath, filename: path.basename(filePath) };
 }
 
@@ -30,7 +49,15 @@ export async function writeResultsZip(items, config) {
       suffix: "ai-sms",
       maxLength: config.limits.exportFilenameLength
     });
-    archive.append(renderHtmlDocument({ subject: result.subject, emailHtml: result.emailHtml, config }), { name: filename });
+    archive.append(
+      renderHtmlDocument({
+        subject: result.subject,
+        emailHtml: result.emailHtml,
+        config,
+        contactCandidates: contactCandidatesForResult(result, record)
+      }),
+      { name: filename }
+    );
   }
   await archive.finalize();
   await new Promise((resolve, reject) => {

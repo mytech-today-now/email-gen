@@ -14,8 +14,38 @@ export function clampNumber(value, min, max, fallback) {
   return Math.min(max, Math.max(min, number));
 }
 
-export function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+export function sleep(ms, signal = null) {
+  return new Promise((resolve, reject) => {
+    if (!Number.isFinite(ms) || ms <= 0) {
+      resolve();
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      cleanup();
+      resolve();
+    }, ms);
+    timer.unref?.();
+
+    function cleanup() {
+      clearTimeout(timer);
+      signal?.removeEventListener?.("abort", onAbort);
+    }
+
+    function onAbort() {
+      cleanup();
+      reject(signal?.reason ?? new DOMException("Aborted", "AbortError"));
+    }
+
+    if (signal) {
+      if (signal.aborted) {
+        cleanup();
+        reject(signal.reason ?? new DOMException("Aborted", "AbortError"));
+        return;
+      }
+      signal.addEventListener("abort", onAbort, { once: true });
+    }
+  });
 }
 
 export function escapeHtml(value) {

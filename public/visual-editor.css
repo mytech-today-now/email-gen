@@ -1,0 +1,38 @@
+:host {
+  display: block;
+}
+
+.canvas {
+  min-height: 100%;
+  padding: 16px;
+  background: #fff;
+  color: #17201d;
+  font:
+    16px/1.5 Arial,
+    sans-serif;
+  outline: none;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.canvas * {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.canvas table {
+  width: 100% !important;
+  max-width: 100% !important;
+  table-layout: fixed;
+}
+
+.canvas img,
+.canvas iframe,
+.canvas video {
+  max-width: 100%;
+  height: auto;
+}
+
+.canvas:focus {
+  box-shadow: inset 0 0 0 3px #005fcc;
+}

@@ -13,10 +13,9 @@ export function normalizeProviderError(error, provider = {}) {
   if (!isAuthFailure(error)) return error;
 
   const label = provider.label ?? provider.id ?? "Selected provider";
-  const credential = provider.apiKeyEnv ? ` Check ${provider.apiKeyEnv}` : " Check the provider credential";
   return new AppError(
     "PROVIDER_AUTH_FAILED",
-    `${label} rejected the configured API key.${credential} or choose another provider.`,
+    `${label} rejected the configured credential. Update it in Configuration or choose another provider.`,
     502
   );
 }

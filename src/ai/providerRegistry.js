@@ -10,10 +10,11 @@ function legacyCompatible(model) {
 export function createProviderRegistry(providerConfig, options = {}) {
   const catalogRepository = options.catalogRepository;
   const providerPreference = options.providerPreference ?? [];
+  const runtimeCredentials = options.runtimeCredentials ?? null;
 
   return {
     publicConfig() {
-      const config = publicProviderConfig(providerConfig);
+      const config = publicProviderConfig(providerConfig, runtimeCredentials);
       if (!catalogRepository) return config;
       return {
         ...config,
@@ -33,10 +34,15 @@ export function createProviderRegistry(providerConfig, options = {}) {
       if (!provider || !provider.enabled) {
         throw new AppError("PROVIDER_NOT_ENABLED", "Selected AI provider is not enabled on the server.", 400);
       }
-      if (providerId !== "mock" && !provider.hasCredential && process.env.AI_MOCK !== "true") {
+      if (
+        providerId !== "mock" &&
+        providerId !== "custom" &&
+        process.env.AI_MOCK !== "true" &&
+        !runtimeCredentials?.has(provider.credentialId)
+      ) {
         throw new AppError(
           "PROVIDER_CREDENTIAL_MISSING",
-          "Selected provider is missing its server-side API credential.",
+          "Selected provider is not configured. Open Configuration to save its credential.",
           400
         );
       }

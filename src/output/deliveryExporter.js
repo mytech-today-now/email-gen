@@ -4,6 +4,7 @@ import archiver from "archiver";
 import { safeExportFilename, slugify, uniquePath, ensureDir } from "../utils/files.js";
 import { renderHtmlDocument } from "./documentRenderer.js";
 import { htmlToPlainText } from "./sanitizer.js";
+import { contactCandidatesForResult } from "./contactActions.js";
 
 export const deliveryExportProfiles = [
   { id: "all", label: "All services and clients" },
@@ -183,7 +184,12 @@ function platformRows(rows, platform) {
 function emlFor(row, config) {
   const boundary = `email-gen-${slugify(row.result.id, "result")}`;
   const to = row.email ? `${row.name ? `"${cleanHeader(row.name).replace(/"/g, "")}" ` : ""}<${row.email}>` : "";
-  const html = renderHtmlDocument({ subject: row.subject, emailHtml: row.bodyHtml, config });
+  const html = renderHtmlDocument({
+    subject: row.subject,
+    emailHtml: row.bodyHtml,
+    config,
+    contactCandidates: contactCandidatesForResult(row.result, row.record)
+  });
   const headers = [
     `From: ${cleanHeader(config.business.name || "Generated Email")} <no-reply@example.invalid>`,
     `To: ${to}`,
@@ -292,7 +298,12 @@ function addPlatformArtifacts(artifacts, rows, items, config, platform) {
     const textName = itemBaseName(result, record, config, ".txt");
     artifacts.push({
       name: `${folder}/campaign-html/${htmlName}`,
-      content: renderHtmlDocument({ subject: row.subject, emailHtml: row.bodyHtml, config })
+      content: renderHtmlDocument({
+        subject: row.subject,
+        emailHtml: row.bodyHtml,
+        config,
+        contactCandidates: contactCandidatesForResult(result, record)
+      })
     });
     artifacts.push({ name: `${folder}/plain-text/${textName}`, content: row.bodyText });
   });
@@ -300,13 +311,14 @@ function addPlatformArtifacts(artifacts, rows, items, config, platform) {
 
 function addClientArtifacts(artifacts, rows, items, config) {
   artifacts.push({ name: "email-clients/send-list.csv", content: toCsv(platformRows(rows, "beehiiv")) });
-  artifacts.push({ name: "email-clients/outlook-thunderbird.mbox", content: mboxFor(rows, config) });
+  const emailRows = rows.filter((row) => row.email);
+  artifacts.push({ name: "email-clients/outlook-thunderbird.mbox", content: mboxFor(emailRows, config) });
   addContactFallbackArtifacts(artifacts, rows, "email-clients", config);
   rows.forEach((row, index) => {
     const { result, record } = items[index];
     const emlName = itemBaseName(result, record, config, ".eml");
     const txtName = itemBaseName(result, record, config, ".txt");
-    artifacts.push({ name: `email-clients/eml/${emlName}`, content: emlFor(row, config) });
+    if (row.email) artifacts.push({ name: `email-clients/eml/${emlName}`, content: emlFor(row, config) });
     artifacts.push({
       name: `email-clients/aol-copy-paste/${txtName}`,
       content: [`To: ${row.email}`, `Subject: ${row.subject}`, "", row.bodyText].join("\r\n")
@@ -334,7 +346,12 @@ function addGenericArtifacts(artifacts, rows, items, config) {
     const { result, record } = items[index];
     artifacts.push({
       name: `generic/html/${itemBaseName(result, record, config)}`,
-      content: renderHtmlDocument({ subject: row.subject, emailHtml: row.bodyHtml, config })
+      content: renderHtmlDocument({
+        subject: row.subject,
+        emailHtml: row.bodyHtml,
+        config,
+        contactCandidates: contactCandidatesForResult(result, record)
+      })
     });
     artifacts.push({
       name: `generic/plain-text/${itemBaseName(result, record, config, ".txt")}`,

@@ -1,0 +1,559 @@
+ARCHIVED PROMPT: historical implementation brief only.
+Current architecture and behavior are documented in docs/ARCHITECTURE.md, docs/BROWSER_STORAGE.md, docs/BACKUP_FORMAT.md, docs/SECURITY.md, and docs/TESTING.md.
+
+You are a principal software architect, test-automation engineer, QA strategist, reliability engineer, application-security specialist, and senior technical writer.
+
+## Mission
+
+Thoroughly refactor and strengthen the **AI Batch Personalizer** application in the following repository:
+
+https://github.com/mytech-today-now/email-gen
+
+Implement the changes directly in the repository. Do not stop at recommendations, pseudocode, or a proposed test plan when repository access and modification are available.
+
+Reason through the work privately and systematically. In your final response, report decisions, evidence, test results, limitations, and changed files without exposing hidden chain-of-thought.
+
+## Primary Objectives
+
+Refactor the application so that it has:
+
+1. A consistently accurate, grammatically correct, technically valid, persuasive, readable, and search-optimized `README.md`.
+2. Automated README quality checks that run on every commit through CI.
+3. A standardized, maintainable testing framework covering the 30 test categories specified below.
+4. Meaningful test cases for every applicable category.
+5. Substantially increased, measurable test coverage.
+6. Comprehensive structured logging to both the console and an external file or the closest technically valid browser equivalent.
+7. Graceful error handling, recovery, retries, partial-failure handling, and safe fallbacks.
+8. Explicit edge-case, regression, confirmation, and end-to-end coverage.
+9. Reliable CI workflows, documented testing commands, coverage enforcement, version consistency, and change-history maintenance.
+
+## Non-Negotiable Ground Rules
+
+- Inspect the repository before making architectural decisions.
+- Read and follow all repository-level instructions, including `AGENTS.md`, contribution guidelines, package-manager conventions, CI configuration, and formatting rules.
+- Examine the actual README, source code, test code, package manifests, lockfiles, configuration, scripts, supported runtimes, UI, APIs, persistence mechanisms, build system, and deployment model.
+- Do not invent features, commands, configuration options, APIs, database layers, supported platforms, performance claims, or security guarantees.
+- Preserve all existing behavior unless a change is required for testing, logging, reliability, security, or error handling.
+- Do not perform an unnecessary application rewrite.
+- Do not remove, disable, weaken, skip, or replace working tests merely to make the new suite pass.
+- Do not lower existing coverage thresholds, linting standards, type-safety settings, or security checks.
+- Do not add placeholder tests, unconditional assertions, meaningless snapshots, excessive mocks, duplicate tests, or tests that merely execute code without verifying behavior.
+- Tests must be deterministic, isolated, repeatable, and independent of execution order.
+- Default tests must not require paid APIs, production credentials, real customer information, or live email delivery.
+- Mock, stub, record, or emulate external AI providers and network services in normal CI.
+- Never commit secrets, tokens, credentials, production data, generated logs, raw personalized content, or personally identifiable information.
+- Use temporary directories, disposable test databases, fixtures, mock servers, and isolated environments.
+- Do not commit or push changes unless the execution environment and user instructions authorize it.
+- If repository access or a required capability is unavailable, report the exact blocker and the minimum information or access needed. Do not fabricate results.
+
+## Phase 1: Repository Discovery and Baseline
+
+Before changing code:
+
+1. Identify:
+   - Languages, frameworks, runtimes, package managers, and supported versions.
+   - Application entry points and major components.
+   - Existing test frameworks, helpers, scripts, fixtures, and coverage tools.
+   - Existing unit, integration, end-to-end, security, performance, and documentation tests.
+   - Existing CI workflows and branch-protection assumptions.
+   - External AI providers, APIs, storage layers, file formats, and browser/server boundaries.
+   - Current logging and error-handling behavior.
+   - Existing `VERSION`, `VERSIONS.md`, `CHANGELOG.md`, release, migration, and schema-version conventions.
+
+2. Run the existing installation, build, lint, type-check, test, and coverage commands before making changes.
+
+3. Record:
+   - Tests passed, failed, skipped, and flaky.
+   - Line, statement, function, and branch coverage.
+   - Per-file coverage for critical application modules.
+   - Current test execution time.
+   - Existing warnings, broken commands, and environmental blockers.
+
+4. Distinguish pre-existing failures from regressions introduced by this work. Do not silently modify tests to hide pre-existing defects.
+
+## Standardized Testing Framework Requirement
+
+Use established, actively maintained, ecosystem-standard testing libraries. Do not invent a proprietary test runner or testing framework.
+
+Select tools only after inspecting the project stack. Appropriate examples may include, when compatible:
+
+- Jest, Vitest, Mocha, Node’s standard test runner, pytest, NUnit, or the project’s existing standard unit-test framework.
+- Testing Library for UI/component behavior.
+- Playwright or Cypress for browser end-to-end testing.
+- Supertest, Pact, MSW, or equivalent standard tools for API and contract testing.
+- axe-core or an established accessibility integration.
+- k6, Artillery, autocannon, or another established performance tool.
+- markdownlint, Vale, cspell, textlint, or equivalent documentation-quality tools.
+- A maintained link checker for Markdown links.
+- Semgrep, CodeQL-compatible analysis, npm audit, OSV-Scanner, OWASP ZAP, or another appropriate security tool.
+- Stryker or another standard mutation-testing tool when mutation testing is practical.
+
+Apply this decision policy:
+
+1. If the existing framework is standardized, functional, and maintainable, retain and extend it.
+2. If another standard tool can be added without rewriting existing tests, add it only when it fills a clear gap.
+3. If replacing the framework would require rewriting most or all existing tests, retain the current framework and extend it.
+4. If the current framework is custom but replacing it would require a disruptive rewrite, preserve it as a compatibility layer while using a standard runner for new tests where practical.
+5. Do not introduce multiple overlapping tools that solve the same problem without a documented reason.
+6. Pin compatible dependency versions, update the lockfile, and document all new commands.
+7. Custom fixtures, matchers, adapters, and helpers are permitted, but they must run within a standardized framework and remain small, documented, and reusable.
+
+Document the framework decision and its rationale, including why existing tests were retained, migrated, or supplemented.
+
+## Required Test Taxonomy
+
+Create or update a test strategy and traceability matrix covering all 30 categories below. These categories overlap because some describe test levels, some describe techniques, and others describe quality characteristics. Do not duplicate identical tests merely to create 30 folders. A well-designed test may satisfy multiple categories when the mapping is accurate and documented.
+
+Each category must have:
+
+- A stable category identifier.
+- One or more requirements or risks.
+- Named test cases with stable IDs.
+- The target component or workflow.
+- Test level and technique.
+- Automation status.
+- Framework and command.
+- Fixture or environment requirements.
+- Expected result.
+- CI execution cadence.
+- Traceability to the relevant source, requirement, defect, or README claim.
+- Actual execution evidence when the test can run in the available environment.
+
+The required categories are:
+
+1. **Static Testing** — source linting, formatting, type checking, dependency analysis, configuration validation, documentation linting, and static security analysis.
+2. **Component (Unit) Testing** — isolated functions, classes, modules, validators, parsers, formatters, template processors, and state transitions.
+3. **Component Integration Testing** — interactions among internal modules such as input parsing, template processing, provider adapters, output generation, logging, and persistence.
+4. **System Testing** — the complete application operating as a unified system in a controlled environment.
+5. **System Integration Testing** — integration with real architectural boundaries such as files, browsers, APIs, storage, subprocesses, or databases, using safe test equivalents.
+6. **End-to-End Testing** — realistic user workflows from installation or launch through input, personalization, results, export, and error recovery.
+7. **Acceptance Testing** — verifiable business outcomes and user-oriented acceptance criteria.
+8. **Functional Testing** — confirmation that documented features behave according to requirements.
+9. **Non-Functional Testing** — reliability, maintainability, observability, security, accessibility, compatibility, usability, and performance characteristics.
+10. **Black-Box Testing** — testing through public interfaces without relying on implementation details.
+11. **White-Box Testing** — branches, conditions, internal state transitions, exception paths, and complex implementation logic.
+12. **Exploratory Testing** — documented charters, scenarios, observations, risks, and reproducible findings.
+13. **Smoke Testing** — fast validation that the application installs, launches, and performs its essential workflow.
+14. **Regression Testing** — permanent protection for existing behavior and previously resolved defects.
+15. **Confirmation Testing** — focused retesting demonstrating that each corrected defect is actually fixed.
+16. **API Testing** — request/response validation, schemas, status codes, authentication behavior, rate limits, retries, timeouts, malformed responses, and compatibility when APIs exist.
+17. **Database Testing** — schema, migrations, constraints, transactions, persistence, corruption handling, and concurrency when a database exists.
+18. **Installation and Upgrade Testing** — clean installation, reinstall, dependency installation, configuration migration, upgrade compatibility, and documented quick-start commands.
+19. **Compatibility Testing** — supported runtime versions, browsers, operating systems, file encodings, package versions, and input formats.
+20. **Internationalization and Localization Testing** — Unicode, emoji, accented characters, non-Latin scripts, right-to-left text, locale-sensitive formatting, and encoding boundaries.
+21. **Accessibility Testing** — keyboard access, focus behavior, labels, landmarks, contrast, semantic structure, screen-reader compatibility, and WCAG 2.2 AA expectations when a web UI exists.
+22. **Usability Testing** — clarity of workflows, validation messages, error recovery, discoverability, and prevention of destructive mistakes.
+23. **Performance Testing** — latency, throughput, memory consumption, CPU consumption, startup time, and processing efficiency.
+24. **Load Testing** — expected concurrent use and realistic batch sizes.
+25. **Stress Testing** — behavior beyond expected limits, including saturation, throttling, and controlled failure.
+26. **Endurance (Soak) Testing** — sustained execution for detecting memory leaks, resource leaks, unbounded logs, or degradation.
+27. **Scalability Testing** — behavior as records, templates, providers, files, or concurrent jobs increase.
+28. **Recovery Testing** — interruption, restart, provider outage, partial writes, corrupt input, unavailable storage, and recovery from partial batches.
+29. **Security Testing** — injection, unsafe rendering, path traversal, secret leakage, insecure storage, dependency risk, log injection, malformed input, and authorization boundaries.
+30. **Penetration Testing** — authorized, non-destructive testing against local or disposable environments only.
+
+If a category is genuinely inapplicable—for example, database testing when the application has no database—do not invent a database merely to satisfy the taxonomy. Instead:
+
+- Add a verifiable applicability case demonstrating that the layer does not exist.
+- Explain the evidence.
+- Map the underlying risk to the nearest real storage or integration boundary.
+- Mark the category as “Not Applicable—Verified,” not silently omitted.
+
+## Test-Case Design Requirements
+
+Use appropriate standard test-design techniques throughout the suite:
+
+- Boundary-value analysis.
+- Equivalence partitioning.
+- Decision tables.
+- State-transition testing.
+- Pairwise or combinatorial testing.
+- Property-based testing where it adds value.
+- Fuzz testing for parsers, templates, URLs, filenames, and structured input.
+- Mutation testing for critical validation or transformation logic where practical.
+- Contract testing for provider adapters and external interfaces.
+- Golden-file or snapshot testing only when the output is stable and the snapshot is meaningfully reviewed.
+
+Add edge cases applicable to the real application, including:
+
+- Null, undefined, blank, missing, zero-length, and whitespace-only values.
+- Empty, single-record, normal, large, and maximum-supported batches.
+- Malformed JSON, CSV, text, configuration, templates, and provider responses.
+- Missing, extra, reordered, duplicated, or differently cased fields and headers.
+- UTF-8 BOMs, alternate line endings, delimiter conflicts, quoting, embedded commas, and multiline values.
+- Unicode, emoji, accented characters, non-Latin text, and right-to-left text.
+- Extremely long values and oversized files.
+- Missing, repeated, escaped, adjacent, or unresolved template placeholders.
+- Duplicate records and conflicting identifiers.
+- Empty, truncated, invalid, delayed, and partially successful AI-provider responses.
+- Authentication failures, permission failures, timeouts, offline conditions, rate limits, throttling, and transient server errors.
+- File-permission failures, invalid paths, interrupted writes, unavailable storage, and simulated disk-write failure.
+- Cancellation, restart, retry, concurrent processing, ordering, and idempotency.
+- Partial-batch failure without losing successfully completed records.
+- Log-write failure without crashing the primary workflow.
+- Untrusted content, prompt injection, HTML/script injection, formula injection, path traversal, and log injection, as applicable.
+
+Do not add tests for features that the application does not have.
+
+## Coverage Expansion and Measurement
+
+Interpret “40%–80% more coverage” rigorously and transparently.
+
+1. Establish the baseline before modifying tests.
+2. Report baseline and final:
+   - Statements.
+   - Lines.
+   - Functions.
+   - Branches.
+   - Critical-module coverage.
+   - Number of meaningful test objectives mapped to each category.
+
+3. For executable source coverage, target a **40%–80% reduction in uncovered executable lines and branches**, calculated as:
+
+   `improvement = (uncovered_before - uncovered_after) / uncovered_before × 100`
+
+4. For each test category with existing coverage, target a 40%–80% relative increase in meaningful covered risks, requirements, branches, or workflows—not merely a larger file count or assertion count.
+
+5. For a category with no baseline tests, create a risk-based initial suite containing, where applicable:
+   - A successful case.
+   - A negative or boundary case.
+   - A failure-recovery or observability case.
+
+6. If the requested improvement is mathematically impossible because coverage is already high, code is generated, or a path requires unavailable external infrastructure:
+   - State the exact limitation.
+   - Exclude only demonstrably non-executable, generated, vendor, fixture, or test-support code.
+   - Achieve the maximum meaningful improvement.
+   - Never fabricate coverage figures or write trivial tests to inflate metrics.
+
+7. Configure CI coverage thresholds at least as strict as existing thresholds and high enough to prevent regression from the new stable baseline.
+
+8. Consider per-file or per-module thresholds for critical code such as:
+   - Input parsing.
+   - Template substitution.
+   - Provider adapters.
+   - Output generation.
+   - Batch orchestration.
+   - Retry and recovery behavior.
+   - Secret redaction.
+   - Logging.
+   - Error handling.
+
+## README Quality System
+
+Refactor `README.md` so it is factually grounded in the repository and compelling to the intended user.
+
+The README should contain, where applicable:
+
+- A clear project name and concise value proposition.
+- A strong opening narrative: user problem → consequences → solution → workflow → outcome → next action.
+- An accurate explanation of what the application does and does not do.
+- Key capabilities supported by the code.
+- Intended users and practical use cases.
+- Prerequisites and supported versions.
+- Copy-and-paste installation and quick-start instructions.
+- Configuration and environment-variable documentation.
+- Supported input formats and template-variable syntax.
+- A realistic, safe example using fixture or synthetic data.
+- AI-provider configuration and limitations.
+- Output behavior and file locations.
+- Logging configuration and log locations.
+- Error handling, retries, partial failures, and recovery behavior.
+- Testing commands and an overview of the test strategy.
+- Security, privacy, and data-handling considerations.
+- Architecture or workflow explanation when useful.
+- Troubleshooting guidance.
+- Contribution guidance and license information.
+- Known limitations or project status.
+- A direct, appropriate call to action.
+
+The README must not contain:
+
+- Unsupported feature claims.
+- Invented benchmarks or user counts.
+- Unverified compatibility statements.
+- Commands that do not exist.
+- Stale filenames, environment variables, paths, or screenshots.
+- Keyword stuffing.
+- Fake testimonials.
+- Claims that tests, encryption, security, or compliance guarantee outcomes they cannot guarantee.
+- Secrets or real customer data.
+
+### README SEO and Persuasion Requirements
+
+- Derive target phrases naturally from the application’s real purpose and audience.
+- Use a descriptive title, clear headings, concise summary, relevant terminology, and useful internal links.
+- Optimize for humans first and search discoverability second.
+- Avoid repetitive or unnatural keyword placement.
+- If internet research is available, review three to five reputable comparable open-source projects to identify useful documentation patterns. Do not copy their language or make competitive claims without evidence.
+- Treat qualitative traits such as “enticing” and “compelling” honestly. Operationalize them through required narrative structure, readability, benefit clarity, examples, and a review rubric rather than pretending that a deterministic test can prove emotional persuasion.
+
+## Automated README Tests
+
+Create a dedicated README quality suite using standard tools. It must test, as applicable:
+
+- Markdown syntax and style.
+- Heading order and exactly one primary project heading.
+- Spelling and grammar-oriented style rules.
+- Broken internal links, anchors, referenced files, and images.
+- External links using a reliable scheduled or retry-aware checker so transient network failures do not make every commit flaky.
+- Meaningful image alternative text.
+- Required sections and narrative sequence.
+- Presence of a clear value proposition and call to action.
+- Readability boundaries that do not force unnatural writing.
+- Natural presence of project-relevant terms without keyword stuffing.
+- Commands, package scripts, paths, configuration keys, and environment-variable names referenced by the README.
+- Consistency with package manifests, example configuration, supported versions, and application help output.
+- Quick-start execution from a clean checkout using mock or dry-run modes rather than paid APIs.
+- Example input and output against stable fixtures.
+- Prohibition of known placeholder text, stale names, secrets, unsupported claims, and contradictory version information.
+- Regression fixtures proving the validator detects representative README defects.
+
+Do not use an external LLM as a required CI gate unless the evaluation is deterministic, securely configured, cost-controlled, version-pinned, and explicitly approved. An AI-based editorial assessment may be added as an optional advisory check, but deterministic checks and human-readable acceptance criteria must remain authoritative.
+
+### Fourteen README Test Lenses
+
+Cover the README quality module using the following 14 test-engineering lenses:
+
+1. Static Testing.
+2. Component (Unit) Testing.
+3. Component Integration Testing.
+4. System Testing.
+5. System Integration Testing.
+6. End-to-End Testing.
+7. Acceptance Testing.
+8. Functional Testing.
+9. Non-Functional Testing.
+10. Black-Box Testing.
+11. White-Box Testing.
+12. Exploratory Testing.
+13. Smoke Testing.
+14. Regression Testing.
+
+Each lens must have at least one named test case or, for inherently human exploratory work, a documented and repeatable test charter. Do not duplicate the same test 14 times; map genuine evidence to each lens.
+
+All automatable README checks must run on every pushed commit and pull request. Provide one documented local command for running the same checks before committing. If the project already uses a pre-commit framework, integrate with it. Otherwise, CI is authoritative, and any local hook must remain transparent and easy to bypass for emergency development without bypassing CI.
+
+## Comprehensive Logging
+
+Implement centralized, structured logging using an established library appropriate to the application’s runtime.
+
+Logging must include:
+
+- Console output.
+- An external log file for server, CLI, desktop, or other filesystem-capable runtimes.
+- Configurable log levels such as trace/debug, info, warning, error, and fatal.
+- Timestamp, severity, component, event name, correlation or batch ID, and safe error context.
+- Configurable log path and retention.
+- Rotation or size limits to prevent unbounded disk usage.
+- Graceful fallback to console logging if the file destination is unavailable.
+- Safe capture of uncaught errors and unhandled promise rejections at application boundaries.
+- Start, completion, cancellation, retry, partial failure, and recovery events.
+- A final batch summary with counts of successes, failures, retries, and skipped records.
+
+Never log:
+
+- API keys, authorization headers, tokens, cookies, passwords, or secrets.
+- Full personalized prompts or responses by default.
+- Full email addresses or unnecessary personal information.
+- Raw customer datasets.
+- Sensitive stack traces in normal user-facing output.
+
+Use redaction, safe identifiers, and configurable diagnostic detail.
+
+If the application is browser-only and cannot continuously append to an arbitrary external file:
+
+- Preserve console logging.
+- Store a bounded structured log buffer using the project’s appropriate client-side storage.
+- Provide a user-controlled export or download-to-file capability.
+- Do not add an unnecessary backend solely to satisfy file logging.
+- Document the browser sandbox limitation clearly.
+
+Add tests for:
+
+- Console and file transports.
+- Level filtering.
+- Structured event fields.
+- Secret and personal-data redaction.
+- Rotation or retention behavior.
+- Concurrent writes.
+- File-permission and write failures.
+- Fallback behavior.
+- Correlation IDs.
+- Log injection and multiline sanitization.
+- Prevention of unbounded log growth.
+
+Exclude generated logs from version control.
+
+## Graceful Error Handling and Recovery
+
+Implement or improve centralized error handling without hiding defects.
+
+The application must:
+
+- Validate inputs early and return actionable messages.
+- Distinguish user/configuration errors, provider errors, transient errors, security errors, and internal defects.
+- Preserve the original cause for diagnostics while showing safe user-facing messages.
+- Retry only transient failures.
+- Use bounded retries with exponential backoff and jitter where appropriate.
+- Honor provider retry guidance such as `Retry-After`.
+- Avoid retrying invalid credentials, malformed requests, or permanent validation errors.
+- Continue processing independent records when one record fails, when safe.
+- Preserve completed work during partial batch failures.
+- Support cancellation and graceful shutdown where the architecture permits.
+- Avoid partial or corrupt output through atomic writes or equivalent safe persistence.
+- Return meaningful process exit codes or visible UI status.
+- Provide a final failure summary and a clear recovery action.
+- Fall back gracefully when optional functionality such as file logging is unavailable.
+- Never convert an unexpected programmer error into silent success.
+
+Add confirmation and regression tests for every defect fixed during this refactor.
+
+## CI Execution Strategy
+
+Create or update CI so that checks are useful without making every commit impractically slow.
+
+At minimum:
+
+### Every pushed commit and pull request
+
+- Dependency installation from the lockfile.
+- README quality suite.
+- Static analysis and formatting checks.
+- Type checking, when applicable.
+- Unit and component tests.
+- Component integration tests.
+- Smoke tests.
+- Regression and confirmation tests.
+- Coverage collection and threshold enforcement.
+- Fast security and dependency checks.
+- A build or package verification step.
+
+### Pull requests or protected branches
+
+- System tests.
+- System-integration tests.
+- End-to-end tests.
+- Installation and upgrade tests.
+- Supported runtime or browser compatibility matrix.
+- Accessibility checks.
+- API and persistence tests, when applicable.
+
+### Scheduled or manually triggered workflows
+
+- External-link validation.
+- Performance, load, stress, scalability, and endurance tests.
+- Deeper dependency and static-security scanning.
+- Authorized local/disposable penetration testing.
+- Mutation testing, if too slow for normal CI.
+
+Heavy tests must have documented duration, resource limits, termination conditions, and expected thresholds. They must never target production or an unapproved external system.
+
+Upload coverage, test, accessibility, and performance reports as CI artifacts when appropriate, ensuring artifacts contain no secrets or customer data.
+
+## Documentation and Traceability Deliverables
+
+Create or update documentation appropriate to the repository, including:
+
+- `README.md`.
+- A test strategy document.
+- A test traceability matrix for all 30 categories.
+- Test commands and CI cadence.
+- Logging configuration and troubleshooting.
+- Error-handling and recovery behavior.
+- Coverage baseline and improvement methodology.
+- Supported runtime, browser, and platform matrix.
+- Known limitations and verified “Not Applicable” categories.
+- Exploratory and usability testing charters.
+- Security and penetration-testing scope.
+
+Use the repository’s existing documentation structure rather than creating redundant files.
+
+## Versioning, Compatibility, and Changelog
+
+- Inspect and preserve the repository’s existing versioning system.
+- Use one authoritative version source whenever possible.
+- Keep repeated version references synchronized and add a test for consistency.
+- Follow Semantic Versioning when the project already uses it or when introducing a formal versioning policy.
+- Do not perform an arbitrary major-version bump.
+- Update `CHANGELOG.md` using the repository’s existing format or a Keep a Changelog-compatible structure.
+- Record these changes under `Unreleased` unless an actual release is explicitly requested.
+- If the repository has `VERSION`, `VERSIONS.md`, schema versions, configuration versions, or API versions, update and test them consistently.
+- If multiple independently versioned components exist, document their compatibility in `VERSIONS.md` or the existing equivalent.
+- Do not create a redundant `VERSIONS.md` for a simple single-package application when the package manifest is sufficient.
+- Add installation and upgrade tests for any configuration, storage, schema, or file-format change.
+- Clearly document backward compatibility and any migration steps.
+
+## Required Validation Before Completion
+
+Run all tests and checks that the available environment supports, including:
+
+- Clean dependency installation.
+- Build.
+- Lint and formatting verification.
+- Type checking.
+- README tests.
+- Unit tests.
+- Integration tests.
+- System tests.
+- End-to-end tests.
+- Accessibility tests.
+- Security checks.
+- Coverage.
+- Installation and upgrade tests.
+- Appropriate performance smoke tests.
+
+Also inspect generated coverage and test reports rather than relying only on process exit codes.
+
+Confirm that:
+
+- Existing tests still pass or pre-existing failures are clearly identified.
+- New tests fail when the corresponding behavior is deliberately broken.
+- No tests are unintentionally skipped.
+- No focused-test markers such as `.only` remain.
+- Test fixtures contain no sensitive data.
+- Logs contain no secrets or unnecessary personal information.
+- Generated logs, reports, and temporary files are correctly ignored.
+- README commands work from a clean environment.
+- CI and local test commands agree.
+- Heavy scheduled tests have finite limits and termination conditions.
+- Changes do not introduce new runtime warnings or unhandled rejections.
+
+## Completion Criteria
+
+The work is complete only when:
+
+1. The repository has been inspected and a baseline recorded.
+2. The selected testing tools are standardized and justified.
+3. Existing tests are preserved unless migration is demonstrably safe and worthwhile.
+4. All 30 categories appear in the traceability matrix with meaningful tests or verified applicability cases.
+5. The README quality module is covered through all 14 required test lenses.
+6. README checks run on every pushed commit and pull request.
+7. The README is accurate, grammatically polished, useful, persuasive, readable, and naturally optimized for discovery.
+8. Coverage improvement is measured honestly using before-and-after evidence.
+9. CI prevents future coverage and documentation regressions.
+10. Logging works in both the console and an external file or the documented browser-safe equivalent.
+11. Logging failures do not crash the application.
+12. Secrets and personal information are redacted.
+13. Errors produce actionable messages and safe fallback behavior.
+14. Partial batches preserve successful results.
+15. Edge, regression, confirmation, and end-to-end tests exist.
+16. Version references and changelog records are consistent.
+17. All supported checks pass, or remaining blockers are precisely documented.
+18. No fabricated claims, placeholder implementations, disabled safeguards, or trivial tests remain.
+
+## Final Response Format
+
+After implementing and validating the changes, return a concise but complete implementation report containing:
+
+1. **Outcome summary**.
+2. **Files changed**, grouped by application code, tests, CI, and documentation.
+3. **Testing-framework decision** and rationale.
+4. **Test-category matrix summary**, including automated, manual, and verified-not-applicable counts.
+5. **Coverage comparison**, with exact baseline, final values, and improvement calculations.
+6. **README validation summary**.
+7. **Logging and error-recovery behavior implemented**.
+8. **Commands executed and their results**.
+9. **Pre-existing failures, skipped heavy tests, environmental blockers, and remaining limitations**.
+10. **Recommended next actions**, only when genuinely necessary.
+
+Do not claim that a test, check, or coverage target passed unless it was actually executed and verified.

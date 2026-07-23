@@ -1,6 +1,7 @@
 import { nowIso } from "../../utils/helpers.js";
 import { evaluateModelCompatibility } from "./capabilities.js";
 import { cacheExpiry, createProviderDiscoveryAdapters } from "./providerAdapters.js";
+import { PROVIDER_PRICING_SOURCES, scrapeProviderPricingCatalog } from "./pricingScraper.js";
 
 function providerList(providerConfig) {
   return Object.values(providerConfig.providers).filter((provider) => provider.enabled);
@@ -88,7 +89,18 @@ function runStatus(providerResults) {
   return "complete_failure";
 }
 
-async function syncProvider({ provider, adapter, config, repository, fetchImpl, logger, runId, timestamp }) {
+async function syncProvider({
+  provider,
+  adapter,
+  config,
+  repository,
+  fetchImpl,
+  logger,
+  runId,
+  timestamp,
+  pricingCatalog = new Map(),
+  pricingSourceUrl = null
+}) {
   const base = {
     providerId: provider.id,
     status: "skipped",
@@ -110,7 +122,15 @@ async function syncProvider({ provider, adapter, config, repository, fetchImpl, 
   }
 
   logger.info({ runId, providerId: provider.id }, "Starting provider model discovery");
-  const discovery = await adapter.discover({ provider, config, fetchImpl, logger, runId });
+  const discovery = await adapter.discover({
+    provider,
+    config,
+    fetchImpl,
+    logger,
+    runId,
+    pricingCatalog,
+    pricingSourceUrl
+  });
   const liveSuccess = discovery.status === "success" || discovery.status === "skipped";
   if (liveSuccess && discovery.models.length) {
     const modelsAccepted = discovery.models.filter((model) => model.compatibility?.compatible).length;
@@ -285,8 +305,13 @@ export function createModelSynchronizer({
   repository,
   fetchImpl,
   logger,
-  adapters = createProviderDiscoveryAdapters()
+  browserLauncher,
+  requestFactory,
+  resolver,
+  adapters,
+  runtimeCredentials = null
 }) {
+  const discoveryAdapters = adapters ?? createProviderDiscoveryAdapters({ runtimeCredentials });
   let activeRun = null;
 
   async function synchronize(triggerSource = "manual") {
@@ -307,17 +332,35 @@ export function createModelSynchronizer({
       const timestamp = nowIso();
       const results = [];
       logger.info({ runId: run.id, triggerSource }, "Starting model catalog synchronization");
+      const providers = providerList(providerConfig);
+      const scrapedPricing =
+        config.nodeEnv === "test" && !browserLauncher && !requestFactory && !resolver
+          ? new Map(providers.map((provider) => [provider.id, new Map()]))
+          : await scrapeProviderPricingCatalog(
+              providers.filter((provider) => PROVIDER_PRICING_SOURCES[provider.id]),
+              {
+                browserLauncher,
+                requestFactory,
+                resolver,
+                browserChannel: config.research.browserChannel,
+                timeoutMs: config.modelSync.providerTimeoutMs,
+                waitAfterLoadMs: config.research.renderDelayMs,
+                logger
+              }
+            );
 
-      for (const provider of providerList(providerConfig)) {
+      for (const provider of providers) {
         const result = await syncProvider({
           provider,
-          adapter: adapters[provider.id],
+          adapter: discoveryAdapters[provider.id],
           config,
           repository,
           fetchImpl,
           logger,
           runId: run.id,
-          timestamp
+          timestamp,
+          pricingCatalog: scrapedPricing.get(provider.id) ?? new Map(),
+          pricingSourceUrl: PROVIDER_PRICING_SOURCES[provider.id]?.url ?? null
         });
         results.push(result);
         logger.info(

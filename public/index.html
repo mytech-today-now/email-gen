@@ -3,32 +3,74 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
     <title>AI Batch Personalizer</title>
     <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/vendor/highlight-github-dark.css" />
   </head>
   <body>
+    <a class="skip-link" href="#mainContent">Skip to workspace</a>
     <header class="topbar">
-      <div>
+      <div class="brand-block">
         <h1>AI Batch Personalizer</h1>
-        <p id="statusLine" aria-live="polite" data-testid="status-line">Starting...</p>
+        <p id="statusLine" class="status-line" aria-live="polite" data-testid="status-line">Starting…</p>
       </div>
       <div class="topbar-actions">
         <label class="field project-field" for="projectSelect">
           <span>Project</span>
           <select id="projectSelect" data-testid="project-select"></select>
         </label>
+        <button id="configurationButton" type="button">Configuration</button>
         <button id="refreshButton" type="button" data-testid="refresh-button">Refresh</button>
+        <button id="cancelArchiveButton" type="button" hidden>Cancel</button>
       </div>
     </header>
 
-    <main class="workspace">
-      <section class="band" aria-labelledby="dataHeading">
-        <div class="band-header">
-          <h2 id="dataHeading">Data</h2>
-          <div class="button-row">
-            <button id="sampleButton" type="button" data-testid="load-sample">Load Sample</button>
+    <section
+      id="storageBanner"
+      class="storage-banner"
+      hidden
+      role="alert"
+      aria-live="assertive"
+      data-testid="storage-banner"
+    >
+      <div class="storage-banner-copy">
+        <p class="eyebrow">Storage safety</p>
+        <h2 id="storageBannerHeading">Stored temporarily - not saved to durable storage</h2>
+        <p id="storageBannerBody"></p>
+        <p id="storageBannerReason" class="caption"></p>
+        <p id="storageBannerDirty" class="caption"></p>
+        <p id="storageBannerDurable" class="caption"></p>
+        <p id="storageBannerPersistence" class="caption"></p>
+        <p id="storageBannerAck" class="caption"></p>
+        <p id="storageBannerExportInfo" class="caption"></p>
+      </div>
+      <div class="toolbar storage-banner-actions" aria-label="Storage recovery actions">
+        <button id="storageAcknowledgeButton" type="button">Acknowledge risk</button>
+        <button id="storageRetryButton" type="button">Retry durable storage</button>
+        <button id="storageResolveButton" type="button">Use current browser data</button>
+        <button id="storagePersistenceButton" type="button">Request persistent storage</button>
+        <button id="storageExportEncryptedButton" class="primary" type="button">
+          Export encrypted backup
+        </button>
+        <label class="file-button">
+          Import backup
+          <input id="storageBannerImportInput" type="file" accept=".zip,.emailgen,.enc,.json" />
+        </label>
+      </div>
+    </section>
+
+    <main id="mainContent" class="workspace">
+      <section id="dataSection" class="band" aria-labelledby="dataHeading">
+        <header class="band-header">
+          <div>
+            <p class="eyebrow">1 · Prepare</p>
+            <h2 id="dataHeading">Data and prompt template</h2>
+          </div>
+          <div class="toolbar" aria-label="Data import actions">
+            <button id="sampleButton" type="button" data-testid="load-sample">Load sample</button>
             <label class="file-button">
-              Import File
+              Import file
               <input
                 id="fileInput"
                 type="file"
@@ -37,206 +79,479 @@
               />
             </label>
           </div>
-        </div>
-        <div class="content-grid data-grid">
-          <div class="table-wrap">
-            <table>
-              <caption>
-                Imported prospect records
-              </caption>
-              <thead>
-                <tr>
-                  <th scope="col">
-                    <input id="selectAllRecords" type="checkbox" aria-label="Select all records" />
-                  </th>
-                  <th scope="col">ID</th>
-                  <th scope="col">Name</th>
-                  <th scope="col">Status</th>
-                </tr>
-              </thead>
-              <tbody id="recordRows" data-testid="record-rows"></tbody>
-            </table>
-          </div>
-          <div class="panel form-stack">
-            <label class="field" for="templateSelect">
-              <span>Prompt template</span>
-              <select id="templateSelect" data-testid="template-select"></select>
-            </label>
-            <label class="field" for="recordSelect">
-              <span>Preview record</span>
-              <select id="recordSelect" data-testid="record-select"></select>
-            </label>
-            <button id="previewButton" type="button" data-testid="preview-button">Preview Prompt</button>
-            <pre id="promptPreview" class="preview" data-testid="prompt-preview"></pre>
-            <div id="templateWarnings" class="warning-list" data-testid="template-warnings"></div>
-          </div>
-        </div>
-      </section>
+        </header>
 
-      <section class="band" aria-labelledby="processingHeading">
-        <div class="band-header">
-          <h2 id="processingHeading">Processing</h2>
-          <div id="jobSummary" aria-live="polite" data-testid="job-summary"></div>
-        </div>
-        <div class="processing-layout">
-          <fieldset class="control-cluster">
-            <legend>Generation</legend>
-            <div class="control-grid">
-              <label class="field" for="providerSelect">
-                <span>Provider</span>
-                <select id="providerSelect" data-testid="provider-select"></select>
-              </label>
-              <label class="field model-field" for="modelSelect">
-                <span>Model</span>
-                <select id="modelSelect" data-testid="model-select"></select>
-              </label>
-              <label class="field" for="addendumSelect">
-                <span>Addendum</span>
-                <select id="addendumSelect" data-testid="addendum-select"></select>
-              </label>
-            </div>
-          </fieldset>
-          <fieldset class="control-cluster">
-            <legend>Options</legend>
-            <div class="option-grid">
-              <label class="switch">
-                <input id="addendumEnabled" type="checkbox" />
-                <span>Addendum</span>
-              </label>
-              <label class="switch">
-                <input id="researchEnabled" type="checkbox" />
-                <span>Research</span>
-              </label>
-              <label class="field compact-field" for="concurrencyInput">
-                <span>Concurrency</span>
-                <input
-                  id="concurrencyInput"
-                  type="number"
-                  min="1"
-                  value="1"
-                  data-testid="concurrency-input"
-                />
-              </label>
-              <label class="field compact-field" for="delayInput">
-                <span>Delay ms</span>
-                <input id="delayInput" type="number" min="0" value="750" data-testid="delay-input" />
-              </label>
-            </div>
-          </fieldset>
-        </div>
-        <div class="action-bar">
-          <div class="action-group primary-actions">
-            <button id="processCurrentButton" type="button" data-testid="process-current">
-              Process Current
-            </button>
-            <button id="processSelectedButton" type="button" data-testid="process-selected">
-              Process Selected
-            </button>
-            <button id="processAllButton" type="button" data-testid="process-all">Process All</button>
-          </div>
-          <div class="range-group">
-            <label for="rangeStart">Range</label>
-            <input id="rangeStart" type="number" min="1" placeholder="Start" />
-            <span class="range-separator" aria-hidden="true">to</span>
-            <input id="rangeEnd" type="number" min="1" placeholder="End" />
-            <button id="processRangeButton" type="button" data-testid="process-range">Process Range</button>
-          </div>
-          <div class="action-group secondary-actions">
-            <button id="stopButton" type="button" data-testid="stop-button" disabled>Stop Scheduling</button>
-            <button id="retryButton" type="button" data-testid="retry-button" disabled>Retry Failed</button>
-          </div>
-        </div>
-      </section>
-
-      <section class="band" aria-labelledby="modelCatalogHeading">
-        <div class="band-header">
-          <h2 id="modelCatalogHeading">Model Catalog</h2>
-          <div class="button-row">
-            <span id="modelSyncSummary" aria-live="polite" data-testid="model-sync-summary"></span>
-            <button id="modelSyncButton" type="button" data-testid="model-sync-button">Refresh Models</button>
-          </div>
-        </div>
-        <div class="content-grid catalog-grid">
-          <div class="table-wrap">
-            <table>
-              <caption>
-                Provider synchronization status
-              </caption>
-              <thead>
-                <tr>
-                  <th scope="col">Provider</th>
-                  <th scope="col">Status</th>
-                  <th scope="col">Last success</th>
-                  <th scope="col">Accepted</th>
-                </tr>
-              </thead>
-              <tbody id="providerStatusRows" data-testid="provider-status-rows"></tbody>
-            </table>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <caption>
-                Discovered models
-              </caption>
-              <thead>
-                <tr>
-                  <th scope="col">Provider</th>
-                  <th scope="col">Model</th>
-                  <th scope="col">Availability</th>
-                  <th scope="col">Compatibility</th>
-                </tr>
-              </thead>
-              <tbody id="modelCatalogRows" data-testid="model-catalog-rows"></tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
-      <section class="band" aria-labelledby="resultsHeading">
-        <div class="band-header">
-          <h2 id="resultsHeading">Results</h2>
-          <div class="button-row">
-            <button id="deleteSelectedResultsButton" type="button" data-testid="delete-selected-results">
-              Delete Selected
-            </button>
-            <button id="deleteActiveResultButton" type="button" data-testid="delete-active-result">
-              Delete Current
-            </button>
-            <button id="exportAllButton" type="button" data-testid="export-all">Export Completed</button>
-          </div>
-        </div>
-        <div class="content-grid results-grid">
-          <div class="results-list">
-            <section class="delivery-tools" aria-labelledby="deliveryHeading">
-              <h3 id="deliveryHeading">Send / Import</h3>
-              <label class="field delivery-target" for="deliveryProfileSelect">
-                <span>Target</span>
-                <select id="deliveryProfileSelect" data-testid="delivery-profile-select">
-                  <option value="all">All services and clients</option>
-                  <option value="beehiiv">Beehiiv</option>
-                  <option value="mailchimp">Mailchimp</option>
-                  <option value="constant-contact">Constant Contact</option>
-                  <option value="email-clients">Outlook, Thunderbird, AOL</option>
-                  <option value="generic">Generic or API handoff</option>
-                </select>
-              </label>
-              <div class="button-row">
-                <button
-                  id="exportDeliverySelectedButton"
-                  type="button"
-                  data-testid="export-delivery-selected"
+        <div id="dataSplit" class="split-pane split-pane-data">
+          <section class="pane" data-split-first aria-labelledby="recordsHeading">
+            <header class="pane-header">
+              <div>
+                <h3 id="recordsHeading">Imported Prospect Records</h3>
+                <span id="recordCount" class="caption">0 records</span>
+              </div>
+              <div class="toolbar compact">
+                <label class="search-field" for="recordSearch"
+                  ><span class="visually-hidden">Search records</span
+                  ><input id="recordSearch" type="search" placeholder="Search records"
+                /></label>
+                <label class="compact-label" for="recordStatusFilter"
+                  >Status
+                  <select id="recordStatusFilter">
+                    <option value="all">All</option>
+                    <option value="ready">Ready</option>
+                    <option value="invalid">Invalid</option>
+                  </select></label
                 >
-                  Export Selected Kit
-                </button>
-                <button id="exportDeliveryAllButton" type="button" data-testid="export-delivery-all">
-                  Export Completed Kit
+                <details class="menu" id="recordColumnMenu">
+                  <summary>Columns</summary>
+                  <fieldset id="recordColumnChooser"><legend>Visible record columns</legend></fieldset>
+                </details>
+                <button type="button" data-reset-split aria-label="Reset data pane widths">
+                  Reset widths
                 </button>
               </div>
-            </section>
-            <div class="table-wrap">
+            </header>
+            <div class="table-wrap dense-table" tabindex="0" aria-label="Scrollable prospect records table">
               <table>
                 <caption>
-                  Generated results
+                  Imported prospect records. Prompt-used columns are marked.
+                </caption>
+                <thead id="recordHeaderRows"></thead>
+                <tbody id="recordRows" data-testid="record-rows"></tbody>
+              </table>
+            </div>
+            <nav class="pagination" aria-label="Record pages">
+              <button id="recordPreviousPage" type="button">Previous</button>
+              <span id="recordPageStatus">Page 1 of 1</span>
+              <button id="recordNextPage" type="button">Next</button>
+              <label for="recordPageSize"
+                >Rows
+                <select id="recordPageSize">
+                  <option>25</option>
+                  <option selected>50</option>
+                  <option>100</option>
+                </select></label
+              >
+            </nav>
+          </section>
+
+          <div
+            class="split-separator"
+            role="separator"
+            tabindex="0"
+            aria-label="Resize records and prompt template panes"
+            aria-controls="recordsHeading templateHeading"
+          >
+            <span aria-hidden="true"></span>
+          </div>
+
+          <section class="pane template-pane" data-split-second aria-labelledby="templateHeading">
+            <header class="pane-header">
+              <div>
+                <h3 id="templateHeading">Prompt Template</h3>
+                <span id="templateMetadata" class="caption">No template selected</span>
+              </div>
+              <div class="toolbar compact">
+                <label class="search-field" for="templateSearch"
+                  ><span class="visually-hidden">Search templates</span
+                  ><input id="templateSearch" type="search" placeholder="Search templates"
+                /></label>
+                <select id="templateSort" aria-label="Sort templates">
+                  <option value="name">Name</option>
+                  <option value="updated">Recently updated</option>
+                  <option value="created">Recently created</option>
+                </select>
+              </div>
+            </header>
+            <div class="template-organizer">
+              <label class="field grow" for="templateSelect"
+                ><span>Template</span
+                ><select id="templateSelect" data-testid="template-select"></select
+              ></label>
+              <label class="field tags-field" for="templateTags"
+                ><span>Tags / folder</span
+                ><input id="templateTags" type="text" placeholder="sales, restaurants"
+              /></label>
+            </div>
+            <div class="toolbar compact template-actions" aria-label="Template actions">
+              <button id="newTemplateButton" type="button">New</button>
+              <button id="saveTemplateButton" class="primary" type="button">Save</button>
+              <button id="saveAsTemplateButton" type="button">Save As</button>
+              <button id="renameTemplateButton" type="button">Rename</button>
+              <button id="duplicateTemplateButton" type="button">Duplicate</button>
+              <button id="revertTemplateButton" type="button">Revert</button>
+              <button id="deleteTemplateButton" class="danger" type="button">Delete</button>
+              <label class="file-button compact"
+                >Import<input id="templateImportInput" type="file" accept=".txt,.md,.prompt,application/json"
+              /></label>
+              <button id="exportTemplateButton" type="button">Export</button>
+            </div>
+            <label class="field editor-field" for="templateEditor"
+              ><span>Editable template source</span
+              ><textarea
+                id="templateEditor"
+                rows="16"
+                spellcheck="true"
+                data-testid="template-editor"
+              ></textarea>
+            </label>
+            <div
+              id="templateWarnings"
+              class="warning-list"
+              role="status"
+              data-testid="template-warnings"
+            ></div>
+            <div class="toolbar compact">
+              <button id="previewButton" type="button" data-testid="preview-button">Rendered Preview</button>
+              <label class="compact-label" for="recordSelect"
+                >Active record
+                <select id="recordSelect" data-testid="record-select"></select
+              ></label>
+              <button id="templateHistoryButton" type="button">Version history</button>
+            </div>
+            <details id="promptPreviewDetails">
+              <summary>Rendered prompt</summary>
+              <pre id="promptPreview" class="preview" data-testid="prompt-preview"></pre>
+            </details>
+          </section>
+        </div>
+      </section>
+
+      <section id="modelCatalogSection" class="band" aria-labelledby="modelCatalogHeading">
+        <header class="band-header">
+          <div>
+            <p class="eyebrow">2 · Choose</p>
+            <h2 id="modelCatalogHeading">Model Catalog</h2>
+          </div>
+          <div class="toolbar">
+            <span id="modelSyncSummary" aria-live="polite" data-testid="model-sync-summary"></span
+            ><button id="modelSyncButton" type="button" data-testid="model-sync-button">
+              Refresh models
+            </button>
+          </div>
+        </header>
+        <div id="catalogSplit" class="split-pane split-pane-catalog">
+          <section class="pane" data-split-first aria-labelledby="providerStatusHeading">
+            <header class="pane-header">
+              <h3 id="providerStatusHeading">Provider Synchronization Status</h3>
+              <button type="button" data-reset-split aria-label="Reset model catalog pane widths">
+                Reset widths
+              </button>
+            </header>
+            <div
+              class="table-wrap dense-table"
+              tabindex="0"
+              aria-label="Scrollable provider synchronization table"
+            >
+              <table>
+                <caption>
+                  Provider synchronization and freshness
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Provider</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Last verified</th>
+                    <th scope="col">Models</th>
+                  </tr>
+                </thead>
+                <tbody id="providerStatusRows" data-testid="provider-status-rows"></tbody>
+              </table>
+            </div>
+          </section>
+          <div
+            class="split-separator"
+            role="separator"
+            tabindex="0"
+            aria-label="Resize provider status and discovered models panes"
+          >
+            <span aria-hidden="true"></span>
+          </div>
+          <section class="pane" data-split-second aria-labelledby="modelsHeading">
+            <header class="pane-header">
+              <div>
+                <h3 id="modelsHeading">Discovered Models</h3>
+                <span id="selectedModelAnnouncement" class="caption" aria-live="polite"
+                  >No model selected</span
+                >
+              </div>
+              <div class="toolbar compact">
+                <label class="search-field" for="modelSearch"
+                  ><span class="visually-hidden">Search models</span
+                  ><input id="modelSearch" type="search" placeholder="Search models"
+                /></label>
+                <label class="compact-label" for="modelProviderFilter"
+                  >Provider
+                  <select id="modelProviderFilter">
+                    <option value="all">All</option>
+                  </select></label
+                >
+                <label class="switch"
+                  ><input id="compatibleModelsOnly" type="checkbox" checked /> Compatible</label
+                >
+                <label class="switch"><input id="favoriteModelsOnly" type="checkbox" /> Favorites</label>
+              </div>
+            </header>
+            <div class="table-wrap dense-table" tabindex="0" aria-label="Scrollable model catalog table">
+              <table class="model-catalog-table">
+                <colgroup>
+                  <col class="model-catalog-col-select" />
+                  <col class="model-catalog-col-favorite" />
+                  <col />
+                  <col />
+                  <col class="model-catalog-col-compatibility" />
+                  <col class="model-catalog-col-input" />
+                  <col class="model-catalog-col-output" />
+                  <col class="model-catalog-col-freshness" />
+                </colgroup>
+                <caption>
+                  Select one compatible model for structured email generation.
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Select</th>
+                    <th scope="col">Favorite</th>
+                    <th scope="col">Provider</th>
+                    <th scope="col">Model</th>
+                    <th scope="col">Compatibility</th>
+                    <th scope="col">Input / 1M</th>
+                    <th scope="col">Output / 1M</th>
+                    <th scope="col">Freshness</th>
+                  </tr>
+                </thead>
+                <tbody id="modelCatalogRows" data-testid="model-catalog-rows"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section id="processingSection" class="band" aria-labelledby="processingHeading">
+        <header class="band-header">
+          <div>
+            <p class="eyebrow">3 · Generate</p>
+            <h2 id="processingHeading">Processing</h2>
+          </div>
+          <div id="jobSummary" aria-live="polite" data-testid="job-summary"></div>
+        </header>
+        <div class="processing-layout">
+          <fieldset class="control-cluster">
+            <legend>Scope and action</legend>
+            <div class="control-grid">
+              <label class="field" for="processingScope"
+                ><span>Scope</span
+                ><select id="processingScope">
+                  <option value="current">Current</option>
+                  <option value="selected">Selected</option>
+                  <option value="all">All</option>
+                  <option value="range">Range</option>
+                </select></label
+              >
+              <div id="rangeFields" class="range-fields" hidden>
+                <label class="field" for="rangeStart"
+                  ><span>Start row</span><input id="rangeStart" type="number" min="1" /></label
+                ><label class="field" for="rangeEnd"
+                  ><span>End row</span><input id="rangeEnd" type="number" min="1"
+                /></label>
+              </div>
+              <button
+                id="processButton"
+                class="primary large-action"
+                type="button"
+                data-testid="process-button"
+              >
+                Process current (0)
+              </button>
+              <p id="processButtonHint" class="caption" aria-live="polite" data-testid="process-button-hint">
+                Ready to process selected records.
+              </p>
+              <button id="stopButton" class="danger" type="button" data-testid="stop-button" hidden disabled>
+                Stop
+              </button>
+              <button id="retryButton" type="button" data-testid="retry-button" disabled>
+                Retry Failed (0)
+              </button>
+            </div>
+          </fieldset>
+          <fieldset class="control-cluster">
+            <legend>Selected model</legend>
+            <p id="selectedModelSummary">Select a compatible model in Model Catalog.</p>
+            <button id="changeModelButton" type="button">Change model</button>
+            <p id="executionModeSummary" class="caption">Execution mode: Auto.</p>
+            <p id="batchCostEstimate" class="caption">Estimated cost unavailable.</p>
+          </fieldset>
+          <details class="control-cluster processing-options" open>
+            <summary>Addendum, research, and pacing</summary>
+            <div class="control-grid">
+              <label class="field" for="executionModeSelect"
+                ><span>Execution mode</span
+                ><select id="executionModeSelect" data-testid="execution-mode-select">
+                  <option value="auto" selected>Auto</option>
+                  <option value="provider-batch">Provider batch</option>
+                  <option value="standard">Standard API</option>
+                </select></label
+              >
+              <label class="switch"><input id="addendumEnabled" type="checkbox" /> Include addendum</label>
+              <label class="field" for="addendumSelect"
+                ><span>Addendum</span
+                ><select id="addendumSelect" data-testid="addendum-select" disabled>
+                  <option value="">None</option>
+                </select></label
+              >
+              <button id="previewAddendumButton" type="button" disabled>Preview addendum</button>
+              <label class="switch"
+                ><input id="researchEnabled" type="checkbox" /> Public website research</label
+              >
+              <p class="caption">
+                Bounded public fetches only. Partial contact-page failures can still produce degraded
+                research.
+              </p>
+              <label class="field" for="researchDepth"
+                ><span>Research depth</span
+                ><select id="researchDepth">
+                  <option value="3">Light</option>
+                  <option value="5" selected>Standard</option>
+                  <option value="10">Deep</option>
+                </select></label
+              >
+              <label class="field" for="concurrencyInput"
+                ><span>Concurrency</span
+                ><input id="concurrencyInput" type="number" min="1" value="1" data-testid="concurrency-input"
+              /></label>
+              <label class="field" for="delayInput"
+                ><span>Delay (ms)</span
+                ><input id="delayInput" type="number" min="0" value="750" data-testid="delay-input"
+              /></label>
+            </div>
+          </details>
+        </div>
+        <dl id="progressSummary" class="progress-summary" aria-live="polite">
+          <div>
+            <dt>Queued</dt>
+            <dd>0</dd>
+          </div>
+          <div>
+            <dt>Running</dt>
+            <dd>0</dd>
+          </div>
+          <div>
+            <dt>Completed</dt>
+            <dd>0</dd>
+          </div>
+          <div>
+            <dt>Failed</dt>
+            <dd>0</dd>
+          </div>
+          <div>
+            <dt>Stopped</dt>
+            <dd>0</dd>
+          </div>
+          <div>
+            <dt>Remaining</dt>
+            <dd>0</dd>
+          </div>
+        </dl>
+        <div
+          class="table-wrap dense-table"
+          tabindex="0"
+          aria-label="Scrollable provider batch operations table"
+        >
+          <table class="provider-batch-operations-table">
+            <caption>
+              Provider-batch operations for the current project.
+            </caption>
+            <colgroup>
+              <col />
+              <col />
+              <col />
+              <col />
+              <col class="provider-batch-updated-col" />
+              <col class="provider-batch-action-col" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th scope="col">Operation</th>
+                <th scope="col">Status</th>
+                <th scope="col">Submission / monitoring</th>
+                <th scope="col">Progress</th>
+                <th scope="col">Updated</th>
+                <th scope="col">Action</th>
+              </tr>
+            </thead>
+            <tbody id="providerBatchOperationRows" data-testid="provider-batch-operation-rows"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="resultsSection" class="band results-band" aria-labelledby="resultsHeading">
+        <header class="band-header">
+          <div>
+            <p class="eyebrow">4 · Review and deliver</p>
+            <h2 id="resultsHeading">Results</h2>
+          </div>
+        </header>
+        <div id="resultsSplit" class="split-pane split-pane-results">
+          <section class="pane results-list" data-split-first aria-labelledby="generatedResultsHeading">
+            <header class="pane-header">
+              <div>
+                <h3 id="generatedResultsHeading">Generated Results</h3>
+                <span id="resultSelectionCount" class="caption" aria-live="polite">0 selected</span>
+              </div>
+              <div class="toolbar compact">
+                <label class="search-field" for="resultSearch"
+                  ><span class="visually-hidden">Search results</span
+                  ><input id="resultSearch" type="search" placeholder="Search results" /></label
+                ><label class="compact-label" for="resultStatusFilter"
+                  >Status
+                  <select id="resultStatusFilter">
+                    <option value="all">All</option>
+                    <option value="completed">Completed</option>
+                    <option value="failed">Failed</option>
+                    <option value="trashed">Trash</option>
+                  </select></label
+                >
+                <details class="menu">
+                  <summary>Columns</summary>
+                  <fieldset id="resultColumnChooser"><legend>Visible result columns</legend></fieldset>
+                </details>
+                <button
+                  id="deleteSelectedResultsButton"
+                  class="danger"
+                  type="button"
+                  data-testid="delete-selected-results"
+                  disabled
+                >
+                  Delete selected (0)</button
+                ><button type="button" data-reset-split aria-label="Reset results pane widths">
+                  Reset widths
+                </button>
+              </div>
+            </header>
+            <section class="delivery-toolbar" aria-labelledby="deliveryHeading">
+              <h4 id="deliveryHeading">Send / Import</h4>
+              <label class="field delivery-target" for="deliveryProfileSelect"
+                ><span>Delivery target</span
+                ><select id="deliveryProfileSelect" aria-describedby="deliveryTargetHelp">
+                  <option value="all">All services and clients</option>
+                  <option value="email-clients">Email clients (.eml)</option>
+                  <option value="generic">Generic/API handoff</option>
+                </select></label
+              >
+              <span id="deliveryTargetHelp" class="visually-hidden"
+                >Choose which files to include in a delivery kit.</span
+              >
+              <button id="exportDeliverySelectedButton" type="button" data-testid="export-delivery-selected">
+                Export selected kit
+              </button>
+              <button id="exportDeliveryAllButton" type="button" data-testid="export-delivery-all">
+                Export completed kit
+              </button>
+              <button id="exportAllButton" type="button" data-testid="export-all">Export Completed</button>
+              <button id="resendPreflightButton" type="button">Resend preflight</button>
+            </section>
+            <div class="table-wrap dense-table results-table-wrap" tabindex="0">
+              <table>
+                <caption>
+                  Generated results with selection and delivery status.
                 </caption>
                 <thead>
                   <tr>
@@ -244,80 +559,231 @@
                       <input
                         id="selectAllResults"
                         type="checkbox"
-                        aria-label="Select all completed results"
+                        aria-label="Select all visible completed results"
                         data-testid="select-all-results"
                       />
                     </th>
-                    <th scope="col">
-                      <button
-                        id="sortResultsByRecord"
-                        class="sort-button"
-                        type="button"
-                        data-sort-key="record"
-                        data-testid="sort-results-record"
-                      >
-                        Record
-                      </button>
+                    <th scope="col" data-result-column="record">
+                      <button class="sort-button" data-result-sort="record" type="button">Record</button>
                     </th>
-                    <th scope="col">
-                      <button
-                        id="sortResultsByStatus"
-                        class="sort-button"
-                        type="button"
-                        data-sort-key="status"
-                        data-testid="sort-results-status"
-                      >
-                        Status
-                      </button>
+                    <th scope="col" data-result-column="contact">Contact</th>
+                    <th scope="col" data-result-column="status">
+                      <button class="sort-button" data-result-sort="status" type="button">Status</button>
                     </th>
-                    <th scope="col">
-                      <button
-                        id="sortResultsBySubject"
-                        class="sort-button"
-                        type="button"
-                        data-sort-key="subject"
-                        data-testid="sort-results-subject"
-                      >
-                        Subject
-                      </button>
+                    <th scope="col" data-result-column="subject">
+                      <button class="sort-button" data-result-sort="subject" type="button">Subject</button>
                     </th>
+                    <th scope="col" data-result-column="provider">Provider / model</th>
+                    <th scope="col" data-result-column="updatedAt">
+                      <button class="sort-button" data-result-sort="updatedAt" type="button">Updated</button>
+                    </th>
+                    <th scope="col" data-result-column="delivery">Delivery</th>
                   </tr>
                 </thead>
                 <tbody id="resultRows" data-testid="result-rows"></tbody>
               </table>
             </div>
+          </section>
+
+          <div
+            class="split-separator"
+            role="separator"
+            tabindex="0"
+            aria-label="Resize generated results and selected result panes"
+          >
+            <span aria-hidden="true"></span>
           </div>
-          <article class="panel result-panel" aria-labelledby="activeResultHeading">
-            <h3 id="activeResultHeading">Selected Result</h3>
-            <div id="resultError" class="result-error" role="alert" hidden data-testid="result-error"></div>
-            <div class="contact-summary" data-testid="selected-contact">
-              <span>Email</span>
-              <strong id="selectedContactValue">No result selected</strong>
-            </div>
-            <label class="field" for="subjectInput">
-              <span>Subject</span>
-              <input id="subjectInput" type="text" data-testid="subject-input" />
-            </label>
-            <label class="field" for="bodyInput">
-              <span>Body HTML</span>
-              <textarea id="bodyInput" rows="10" data-testid="body-input"></textarea>
-            </label>
-            <div class="button-row">
-              <button id="saveEditButton" type="button" data-testid="save-edit">Save Edits</button>
-              <button id="discardEditButton" type="button" data-testid="discard-edit">Discard</button>
-              <button id="regenerateButton" type="button" data-testid="regenerate-button">Regenerate</button>
-            </div>
-            <div class="button-row">
-              <button id="copySubjectButton" type="button" data-testid="copy-subject">Copy Subject</button>
-              <button id="copyRenderedButton" type="button" data-testid="copy-rendered">
-                Copy Rendered Email
+
+          <article class="pane selected-result" data-split-second aria-labelledby="activeResultHeading">
+            <header class="pane-header sticky-header">
+              <div>
+                <h3 id="activeResultHeading">Selected Result</h3>
+              </div>
+              <button
+                id="deleteActiveResultButton"
+                class="danger"
+                type="button"
+                data-testid="delete-active-result"
+                disabled
+              >
+                Delete Selected Result
               </button>
-              <button id="copyHtmlButton" type="button" data-testid="copy-html">Copy HTML</button>
-              <button id="copyTextButton" type="button" data-testid="copy-text">Copy Plain Text</button>
-              <button id="exportOneButton" type="button" data-testid="export-one">Export HTML</button>
-              <button id="printButton" type="button" data-testid="print-button">Print</button>
+            </header>
+            <div class="result-actions">
+              <div class="action-group">
+                <span>Editing</span
+                ><button id="saveEditButton" class="primary" type="button" data-testid="save-edit" disabled>
+                  Save edits</button
+                ><button id="discardEditButton" type="button" data-testid="discard-edit" disabled>
+                  Discard</button
+                ><button id="regenerateButton" type="button" data-testid="regenerate-button" disabled>
+                  Regenerate
+                </button>
+              </div>
+              <div class="action-group">
+                <span>Clipboard</span
+                ><button id="copyEmailButton" type="button" disabled>Copy Email Address</button
+                ><button id="copySubjectButton" type="button" data-testid="copy-subject" disabled>
+                  Copy Subject</button
+                ><button id="copyRenderedButton" type="button" data-testid="copy-rendered" disabled>
+                  Copy Rendered Email
+                </button>
+                <details class="menu">
+                  <summary>Advanced</summary>
+                  <button id="copyHtmlButton" type="button" data-testid="copy-html" disabled>Copy HTML</button
+                  ><button id="copyTextButton" type="button" data-testid="copy-text" disabled>
+                    Copy Plain Text
+                  </button>
+                </details>
+              </div>
+              <div class="action-group">
+                <span>Output</span
+                ><button id="exportOneButton" type="button" data-testid="export-one" disabled>
+                  Export HTML</button
+                ><button id="printButton" type="button" data-testid="print-button" disabled>Print</button>
+              </div>
             </div>
-            <iframe id="emailPreview" title="Rendered email preview" data-testid="email-preview"></iframe>
+            <span id="activeResultMetadata" class="caption result-metadata">No result selected</span>
+            <div id="resultError" class="result-error" role="alert" hidden data-testid="result-error"></div>
+            <section class="contact-panel" aria-labelledby="contactCandidatesHeading">
+              <div>
+                <h4 id="contactCandidatesHeading">Contact candidates</h4>
+                <strong id="selectedContactValue">No result selected</strong>
+              </div>
+              <label class="compact-label" for="primaryContactSelect"
+                >Primary
+                <select id="primaryContactSelect" disabled></select
+              ></label>
+              <ul id="contactCandidateList"></ul>
+            </section>
+            <label class="field" for="subjectInput"
+              ><span>Subject</span
+              ><input id="subjectInput" type="text" maxlength="160" data-testid="subject-input" disabled
+            /></label>
+            <section id="emailEditorShell" class="email-editor" aria-labelledby="emailEditorHeading">
+              <header class="editor-toolbar">
+                <div>
+                  <h4 id="emailEditorHeading">Final email editor</h4>
+                  <p class="caption">
+                    Raw HTML and rendered HTML stay visible together and resize independently.
+                  </p>
+                </div>
+              </header>
+              <div
+                id="rawEditorPane"
+                class="editor-panel raw-editor-pane"
+                aria-labelledby="rawPanelHeading"
+                data-panel="raw"
+              >
+                <div class="editor-panel-header">
+                  <div>
+                    <p class="eyebrow">Source view</p>
+                    <h5 id="rawPanelHeading">Raw HTML</h5>
+                  </div>
+                  <div class="editor-panel-controls">
+                    <p class="caption">Editable source with structural hints.</p>
+                    <div class="toolbar compact">
+                      <button id="rawCollapseButton" type="button" aria-label="Collapse raw HTML panel">
+                        Collapse
+                      </button>
+                      <button id="rawFitButton" type="button" aria-label="Fit raw HTML panel to content">
+                        Fit
+                      </button>
+                      <button id="rawExpandButton" type="button" aria-label="Expand raw HTML panel">
+                        Expand
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div id="rawFindToolbar" class="raw-find">
+                  <label for="rawFindInput">Find HTML <input id="rawFindInput" type="search" /></label
+                  ><button id="rawFindNextButton" type="button">Next</button
+                  ><span id="rawErrorCount">0 errors</span>
+                </div>
+                <div class="editor-panel-body code-editor">
+                  <pre id="rawLineNumbers" aria-hidden="true">1</pre>
+                  <textarea
+                    id="bodyInput"
+                    aria-label="Final email HTML"
+                    spellcheck="false"
+                    data-testid="body-input"
+                    disabled
+                  ></textarea>
+                </div>
+                <pre id="rawSyntaxPreview" class="syntax-preview" aria-hidden="true"></pre>
+                <div
+                  id="rawResizeHandle"
+                  class="panel-resize-handle"
+                  role="separator"
+                  tabindex="-1"
+                  aria-orientation="horizontal"
+                  aria-controls="rawEditorPane"
+                  aria-label="Resize raw HTML panel"
+                  data-testid="raw-resize-handle"
+                >
+                  <span class="panel-resize-grip" aria-hidden="true"></span>
+                  <span class="panel-resize-text">Drag or use arrow keys to resize the raw HTML panel</span>
+                </div>
+                <div id="rawPanelStatus" class="sr-only" aria-live="polite"></div>
+              </div>
+              <div
+                id="visualEditorPane"
+                class="editor-panel visual-editor-pane"
+                aria-labelledby="visualPanelHeading"
+                data-panel="preview"
+              >
+                <div class="editor-panel-header">
+                  <div>
+                    <p class="eyebrow">Rendered view</p>
+                    <h5 id="visualPanelHeading">Rendered HTML</h5>
+                  </div>
+                  <div class="editor-panel-controls">
+                    <p class="caption">Rendered preview with safe fallbacks if rendering fails.</p>
+                    <div class="toolbar compact">
+                      <button
+                        id="visualCollapseButton"
+                        type="button"
+                        aria-label="Collapse rendered HTML panel"
+                      >
+                        Collapse
+                      </button>
+                      <button
+                        id="visualFitButton"
+                        type="button"
+                        aria-label="Fit rendered HTML panel to content"
+                      >
+                        Fit
+                      </button>
+                      <button id="visualExpandButton" type="button" aria-label="Expand rendered HTML panel">
+                        Expand
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <p id="visualPreviewState" class="caption visual-preview-state" role="status">
+                  Rendered HTML preview is ready.
+                </p>
+                <div id="visualEditorHost" class="editor-panel-body visual-editor-host"></div>
+                <div
+                  id="visualResizeHandle"
+                  class="panel-resize-handle"
+                  role="separator"
+                  tabindex="-1"
+                  aria-orientation="horizontal"
+                  aria-controls="visualEditorPane"
+                  aria-label="Resize rendered HTML panel"
+                  data-testid="visual-resize-handle"
+                >
+                  <span class="panel-resize-grip" aria-hidden="true"></span>
+                  <span class="panel-resize-text"
+                    >Drag or use arrow keys to resize the rendered HTML panel</span
+                  >
+                </div>
+                <div id="visualPanelStatus" class="sr-only" aria-live="polite"></div>
+              </div>
+              <div id="editorPanelMessage" class="warning-list" role="status" hidden></div>
+              <div id="sanitizationWarnings" class="warning-list" role="status"></div>
+            </section>
             <details>
               <summary>Rendered prompt and research</summary>
               <pre id="resultPrompt" class="preview" data-testid="result-prompt"></pre>
@@ -327,6 +793,422 @@
       </section>
     </main>
 
+    <footer class="app-footer">
+      <span>AI Batch Personalizer v<span id="applicationVersion">2.0.0</span></span
+      ><span>© <span id="copyrightYear"></span> myTech.Today</span
+      ><a href="https://github.com/mytech-today-now/email-gen" target="_blank" rel="noopener noreferrer"
+        >Repository</a
+      ><a href="https://mytech.today" target="_blank" rel="noopener noreferrer">Creator</a>
+    </footer>
+
+    <dialog id="configurationDialog" class="configuration-dialog" aria-labelledby="configurationHeading">
+      <form method="dialog" id="configurationForm">
+        <header class="dialog-header">
+          <div>
+            <p class="eyebrow">Local settings</p>
+            <h2 id="configurationHeading">Configuration</h2>
+          </div>
+          <button id="configurationCloseButton" type="button" aria-label="Close configuration">×</button>
+        </header>
+        <div class="settings-layout">
+          <nav aria-label="Configuration sections">
+            <a href="#settingsGeneral">General</a><a href="#settingsProviders">AI Providers</a
+            ><a href="#settingsCatalog">Model Catalog and Pricing</a
+            ><a href="#settingsOpenRouter">OpenRouter</a><a href="#settingsOllama">Ollama</a
+            ><a href="#settingsResend">Resend</a><a href="#settingsResearch">Research and Search</a
+            ><a href="#settingsStorage">Storage and Backups</a
+            ><a href="#settingsTemplates">Templates and Addenda</a
+            ><a href="#settingsLogging">Logging and Diagnostics</a
+            ><a href="#settingsAccessibility">Accessibility</a><a href="#settingsTutorial">Tutorial</a
+            ><a href="#settingsAdvanced">Advanced</a>
+          </nav>
+          <div class="settings-content">
+            <section id="settingsGeneral">
+              <h3>General</h3>
+              <label class="field" for="businessNameSetting"
+                ><span>Business name</span><input id="businessNameSetting" /></label
+              ><label class="field" for="businessSignatureSetting"
+                ><span>Signature</span><textarea id="businessSignatureSetting" rows="3"></textarea></label
+              ><label class="field" for="businessUrlSetting"
+                ><span>Canonical product URL</span><input id="businessUrlSetting" type="url" /></label
+              ><label class="field" for="companyAddressSetting"
+                ><span>Company postal address</span><textarea id="companyAddressSetting" rows="2"></textarea>
+              </label>
+            </section>
+            <section id="settingsProviders">
+              <h3>AI Providers</h3>
+              <p>
+                Credentials are submitted to the local backend, kept only in server memory, and cleared when
+                the app restarts or you remove them. Credential values are never returned to the browser.
+              </p>
+              <div class="credential-grid">
+                <div class="field">
+                  <span>OpenAI API key</span>
+                  <input
+                    id="openaiKeySetting"
+                    type="password"
+                    autocomplete="off"
+                    spellcheck="false"
+                    autocorrect="off"
+                    autocapitalize="off"
+                  />
+                  <div class="toolbar">
+                    <button id="toggleOpenaiKeyButton" type="button">Show</button>
+                    <button id="testOpenaiCredentialButton" type="button">Test connection</button>
+                    <button id="clearOpenaiCredentialButton" class="danger" type="button">Clear</button>
+                  </div>
+                  <p id="openaiCredentialStatus" aria-live="polite">Not configured</p>
+                </div>
+                <div class="field">
+                  <span>Anthropic API key</span>
+                  <input
+                    id="anthropicKeySetting"
+                    type="password"
+                    autocomplete="off"
+                    spellcheck="false"
+                    autocorrect="off"
+                    autocapitalize="off"
+                  />
+                  <div class="toolbar">
+                    <button id="toggleAnthropicKeyButton" type="button">Show</button>
+                    <button id="testAnthropicCredentialButton" type="button">Test connection</button>
+                    <button id="clearAnthropicCredentialButton" class="danger" type="button">Clear</button>
+                  </div>
+                  <p id="anthropicCredentialStatus" aria-live="polite">Not configured</p>
+                </div>
+                <div class="field">
+                  <span>xAI API key</span>
+                  <input
+                    id="xaiKeySetting"
+                    type="password"
+                    autocomplete="off"
+                    spellcheck="false"
+                    autocorrect="off"
+                    autocapitalize="off"
+                  />
+                  <div class="toolbar">
+                    <button id="toggleXaiKeyButton" type="button">Show</button>
+                    <button id="testXaiCredentialButton" type="button">Test connection</button>
+                    <button id="clearXaiCredentialButton" class="danger" type="button">Clear</button>
+                  </div>
+                  <p id="xaiCredentialStatus" aria-live="polite">Not configured</p>
+                </div>
+                <div class="field">
+                  <span>Venice API key</span>
+                  <input
+                    id="veniceKeySetting"
+                    type="password"
+                    autocomplete="off"
+                    spellcheck="false"
+                    autocorrect="off"
+                    autocapitalize="off"
+                  />
+                  <div class="toolbar">
+                    <button id="toggleVeniceKeyButton" type="button">Show</button>
+                    <button id="testVeniceCredentialButton" type="button">Test connection</button>
+                    <button id="clearVeniceCredentialButton" class="danger" type="button">Clear</button>
+                  </div>
+                  <p id="veniceCredentialStatus" aria-live="polite">Not configured</p>
+                </div>
+                <div class="field">
+                  <span>Luma AI API key</span>
+                  <input
+                    id="lumaaiKeySetting"
+                    type="password"
+                    autocomplete="off"
+                    spellcheck="false"
+                    autocorrect="off"
+                    autocapitalize="off"
+                  />
+                  <div class="toolbar">
+                    <button id="toggleLumaaiKeyButton" type="button">Show</button>
+                    <button id="testLumaaiCredentialButton" type="button">Test connection</button>
+                    <button id="clearLumaaiCredentialButton" class="danger" type="button">Clear</button>
+                  </div>
+                  <p id="lumaaiCredentialStatus" aria-live="polite">Not configured</p>
+                </div>
+                <div class="field">
+                  <span>Custom OpenAI-compatible API key (optional)</span>
+                  <input
+                    id="customKeySetting"
+                    type="password"
+                    autocomplete="off"
+                    spellcheck="false"
+                    autocorrect="off"
+                    autocapitalize="off"
+                  />
+                  <div class="toolbar">
+                    <button id="toggleCustomKeyButton" type="button">Show</button>
+                    <button id="testCustomCredentialButton" type="button">Test connection</button>
+                    <button id="clearCustomCredentialButton" class="danger" type="button">Clear</button>
+                  </div>
+                  <p id="customCredentialStatus" aria-live="polite">Not configured</p>
+                </div>
+                <label class="field"
+                  ><span>Custom provider base URL</span
+                  ><input id="customBaseUrlSetting" type="url" placeholder="https://provider.example/v1"
+                /></label>
+              </div>
+              <label class="switch"
+                ><input id="confirmCustomProviderHost" type="checkbox" /> I explicitly trust this custom
+                provider endpoint</label
+              >
+            </section>
+            <section id="settingsCatalog">
+              <h3>Model Catalog and Pricing</h3>
+              <label class="field"
+                ><span>Cache TTL (hours)</span
+                ><input id="modelCacheTtlSetting" type="number" min="1" max="168"
+              /></label>
+              <p>
+                Pricing is stored with its source URL and verification time. Missing or negative values are
+                never presented as zero.
+              </p>
+            </section>
+            <section id="settingsOpenRouter">
+              <h3>OpenRouter</h3>
+              <label class="field"
+                ><span>OPENROUTER_API_KEY</span
+                ><input
+                  id="openrouterKeySetting"
+                  type="password"
+                  autocomplete="off"
+                  spellcheck="false"
+                  autocorrect="off"
+                  autocapitalize="off" /></label
+              ><label class="field"
+                ><span>Optional HTTP-Referer</span><input id="openrouterRefererSetting" type="url"
+              /></label>
+              <div class="toolbar">
+                <button id="toggleOpenrouterKeyButton" type="button">Show</button>
+                <button id="testOpenRouterButton" type="button">Test connection</button>
+                <button id="clearOpenrouterCredentialButton" class="danger" type="button">Clear</button>
+              </div>
+              <p id="openrouterCredentialStatus" aria-live="polite">Not configured</p>
+            </section>
+            <section id="settingsOllama">
+              <h3>Ollama</h3>
+              <p>No API key is required when Ollama is running on an approved localhost host.</p>
+              <label class="field"
+                ><span>Loopback host</span
+                ><input id="ollamaHostSetting" value="http://127.0.0.1:11434" /></label
+              ><label class="switch"
+                ><input id="confirmCustomOllamaHost" type="checkbox" /> I confirm this custom loopback
+                host</label
+              ><button id="detectOllamaButton" type="button">Detect Ollama</button>
+              <p id="ollamaStatusSetting">Not detected</p>
+            </section>
+            <section id="settingsResend">
+              <h3>Resend</h3>
+              <p class="warning-list">
+                Resend prohibits cold, purchased, and scraped recipients. Only records with verifiable
+                explicit opt-in are eligible.
+              </p>
+              <label class="field"
+                ><span>RESEND_API_KEY</span
+                ><input
+                  id="resendKeySetting"
+                  type="password"
+                  autocomplete="off"
+                  spellcheck="false"
+                  autocorrect="off"
+                  autocapitalize="off" /></label
+              ><label class="field"><span>From name</span><input id="resendFromNameSetting" /></label
+              ><label class="field"
+                ><span>From address</span><input id="resendFromAddressSetting" type="email" /></label
+              ><label class="field"
+                ><span>Reply-To</span><input id="resendReplyToSetting" type="email" /></label
+              ><label class="field"
+                ><span>Test recipient mode</span><input id="resendTestRecipientSetting" type="email" /></label
+              ><label class="field"
+                ><span>Batch size (max 100)</span
+                ><input id="resendBatchSizeSetting" type="number" min="1" max="100" /></label
+              ><label class="field"
+                ><span>One-click unsubscribe URL</span
+                ><input id="resendUnsubscribeSetting" type="url" /></label
+              ><label class="field"
+                ><span>Webhook signing secret (optional)</span
+                ><input
+                  id="resendWebhookSecretSetting"
+                  type="password"
+                  autocomplete="off"
+                  spellcheck="false"
+                  autocorrect="off"
+                  autocapitalize="off"
+              /></label>
+              <div class="toolbar">
+                <button id="toggleResendKeyButton" type="button">Show API key</button>
+                <button id="testResendButton" type="button">Test connection</button>
+                <button id="clearResendCredentialButton" class="danger" type="button">Clear API key</button>
+                <button id="toggleResendWebhookSecretButton" type="button">Show webhook secret</button>
+                <button id="clearResendWebhookCredentialButton" class="danger" type="button">
+                  Clear webhook secret
+                </button>
+                <button id="refreshDeliveryEventsButton" type="button">Refresh delivery events</button>
+              </div>
+              <p id="resendCredentialStatus" aria-live="polite">Not configured</p>
+              <p id="resendWebhookCredentialStatus" aria-live="polite">Not configured</p>
+              <p>
+                Loopback webhooks are not publicly reachable. Use verified public infrastructure or manual
+                refresh; never expose this server unauthenticated.
+              </p>
+            </section>
+            <section id="settingsResearch">
+              <h3>Research and Search</h3>
+              <label class="field"
+                ><span>Brave Search API key</span
+                ><input
+                  id="braveKeySetting"
+                  type="password"
+                  autocomplete="off"
+                  spellcheck="false"
+                  autocorrect="off"
+                  autocapitalize="off"
+              /></label>
+              <div class="toolbar">
+                <button id="toggleBraveKeyButton" type="button">Show</button>
+                <button id="testBraveCredentialButton" type="button">Test connection</button>
+                <button id="clearBraveCredentialButton" class="danger" type="button">Clear</button>
+              </div>
+              <p id="braveCredentialStatus" aria-live="polite">Not configured</p>
+              <p>
+                Search fallback uses Brave's official API only after bounded website discovery finds no usable
+                candidate.
+              </p>
+            </section>
+            <section id="settingsStorage">
+              <h3>Storage and Backups</h3>
+              <dl id="storageStatus"></dl>
+              <label class="field" for="backupScopeSelect"
+                ><span>Export scope</span
+                ><select id="backupScopeSelect">
+                  <option value="all">Everything</option>
+                  <option value="project">Current project</option>
+                  <option value="result">Selected result</option>
+                  <option value="template">Selected template</option>
+                  <option value="addendum">Selected addendum</option>
+                  <option value="templates">All templates and versions</option>
+                  <option value="addenda">All addenda</option>
+                  <option value="settings">Settings</option>
+                  <option value="logs">Diagnostic logs</option>
+                </select></label
+              >
+              <div class="toolbar">
+                <button id="requestPersistenceButton" type="button">Request persistent storage</button
+                ><button id="exportBackupButton" type="button">Export backup</button
+                ><label class="file-button"
+                  >Import backup<input id="importBackupInput" type="file" accept=".zip,.emailgen" /></label
+                ><button id="legacyMigrationButton" type="button">Import legacy SQLite data</button>
+              </div>
+            </section>
+            <section id="settingsTemplates">
+              <h3>Templates and Addenda</h3>
+              <p>Bundled items remain immutable; duplicate them to create editable browser-owned copies.</p>
+            </section>
+            <section id="settingsLogging">
+              <h3>Logging and Diagnostics</h3>
+              <label class="field"
+                ><span>Browser log level</span
+                ><select id="logLevelSetting">
+                  <option>info</option>
+                  <option>debug</option>
+                  <option>warn</option>
+                  <option>error</option>
+                </select></label
+              ><button id="exportDiagnosticsButton" type="button">Export diagnostics</button>
+            </section>
+            <section id="settingsAccessibility">
+              <h3>Accessibility</h3>
+              <label class="switch"
+                ><input id="reducedMotionSetting" type="checkbox" /> Reduce motion in this application</label
+              ><label class="switch"
+                ><input id="highContrastSetting" type="checkbox" /> Increase contrast</label
+              >
+            </section>
+            <section id="settingsTutorial">
+              <h3>Tutorial</h3>
+              <button id="restartWalkthroughButton" type="button">Restart walkthrough</button>
+            </section>
+            <section id="settingsAdvanced">
+              <h3>Advanced</h3>
+              <button id="resetAllDataButton" class="danger" type="button">Reset all browser data</button>
+              <p>Application 2.0.0 · browser schema 4 · backup format 1 · migration 1.</p>
+            </section>
+          </div>
+        </div>
+        <footer class="dialog-actions">
+          <button id="resetSectionButton" type="button">Reset Section</button
+          ><button id="resetAllSettingsButton" type="button">Reset All</button><span class="spacer"></span
+          ><button id="cancelConfigurationButton" type="button">Cancel</button
+          ><button id="applyConfigurationButton" type="button">Apply</button
+          ><button id="saveConfigurationButton" class="primary" type="button">Save</button>
+        </footer>
+      </form>
+    </dialog>
+
+    <dialog id="walkthroughDialog" class="walkthrough-dialog" aria-labelledby="walkthroughHeading">
+      <div id="walkthroughContent">
+        <p class="eyebrow">First-run walkthrough</p>
+        <h2 id="walkthroughHeading">Import prospect data</h2>
+        <p id="walkthroughText"></p>
+        <a
+          id="walkthroughHelp"
+          href="https://github.com/mytech-today-now/email-gen#usage"
+          target="_blank"
+          rel="noopener noreferrer"
+          >Workflow help</a
+        >
+      </div>
+      <footer class="dialog-actions">
+        <button id="walkthroughBack" type="button">Back</button><span id="walkthroughProgress">1 of 8</span
+        ><span class="spacer"></span><button id="walkthroughSkip" type="button">Skip</button
+        ><button id="walkthroughNext" class="primary" type="button">Next</button>
+      </footer>
+    </dialog>
+
+    <dialog id="cellDetailDialog" aria-labelledby="cellDetailHeading">
+      <h2 id="cellDetailHeading">Full cell value</h2>
+      <pre id="cellDetailValue"></pre>
+      <button type="button" data-close-dialog>Close</button>
+    </dialog>
+    <dialog id="historyDialog" aria-labelledby="historyHeading">
+      <h2 id="historyHeading">Version history</h2>
+      <ol id="historyList"></ol>
+      <button type="button" data-close-dialog>Close</button>
+    </dialog>
+    <dialog id="addendumPreviewDialog" aria-labelledby="addendumPreviewHeading">
+      <h2 id="addendumPreviewHeading">Addendum preview</h2>
+      <div id="addendumPreviewContent"></div>
+      <button type="button" data-close-dialog>Close</button>
+    </dialog>
+    <dialog id="resendPreflightDialog" aria-labelledby="resendPreflightHeading">
+      <h2 id="resendPreflightHeading">Resend preflight</h2>
+      <p id="resendPreflightSummary"></p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Include</th>
+              <th>Recipient</th>
+              <th>Consent</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="resendPreflightRows"></tbody>
+        </table>
+      </div>
+      <label class="switch"
+        ><input id="resendFinalConfirmation" type="checkbox" /> I reviewed the exact recipients and confirm
+        they explicitly opted in.</label
+      >
+      <footer class="dialog-actions">
+        <button type="button" data-close-dialog>Cancel</button
+        ><button id="resendSendButton" class="primary" type="button" disabled>Send eligible messages</button>
+      </footer>
+    </dialog>
+
+    <div id="ariaLive" class="visually-hidden" aria-live="polite"></div>
+    <script src="/vendor/highlight-html.js"></script>
     <script type="module" src="/app.js"></script>
   </body>
 </html>

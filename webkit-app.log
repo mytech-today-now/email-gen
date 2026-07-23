@@ -1,0 +1,4 @@
+
+Running 5 tests using 1 worker
+
+[1/5] [webkit] › tests\e2e\app.spec.js:95:1 › catalog-only selection, dynamic columns, and all split panes are keyboard operable

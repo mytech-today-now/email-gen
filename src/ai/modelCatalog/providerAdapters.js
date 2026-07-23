@@ -7,15 +7,7 @@ import {
   normalizeModalities
 } from "./capabilities.js";
 import { fetchJsonWithRetry, ProviderDiscoveryError } from "./providerHttp.js";
-
-const API_KEY_ENV_BY_PROVIDER = {
-  openai: "OPENAI_API_KEY",
-  anthropic: "ANTHROPIC_API_KEY",
-  xai: "XAI_API_KEY",
-  venice: "VENICE_API_KEY",
-  lumaai: "LUMAAI_API_KEY",
-  custom: "AI_CUSTOM_API_KEY"
-};
+import { providerCredentialDefinition } from "../../security/credentialCatalog.js";
 
 function envString(...names) {
   for (const name of names) {
@@ -181,7 +173,82 @@ function limitsFromRaw(raw) {
   };
 }
 
-function normalizeModel({ providerId, raw, configured, config, source }) {
+function numericPrice(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function normalizeProviderPricing(rawPricing, sourceUrl = null) {
+  if (!rawPricing || typeof rawPricing !== "object") return null;
+  const input =
+    numericPrice(rawPricing.inputPerMillionTokens) ??
+    numericPrice(rawPricing.input?.usd) ??
+    numericPrice(rawPricing.input) ??
+    numericPrice(rawPricing.prompt);
+  const output =
+    numericPrice(rawPricing.outputPerMillionTokens) ??
+    numericPrice(rawPricing.output?.usd) ??
+    numericPrice(rawPricing.output) ??
+    numericPrice(rawPricing.completion);
+  const cachedInput =
+    numericPrice(rawPricing.cachedInputReadPerMillionTokens) ??
+    numericPrice(rawPricing.cached_input?.usd) ??
+    numericPrice(rawPricing.cachedInput) ??
+    numericPrice(rawPricing.input_cache_read);
+  const cacheWrite =
+    numericPrice(rawPricing.cachedInputWritePerMillionTokens) ??
+    numericPrice(rawPricing.cache_write?.usd) ??
+    numericPrice(rawPricing.cacheWrite) ??
+    numericPrice(rawPricing.input_cache_write);
+  const inputDisplay = rawPricing.inputDisplay ?? null;
+  const outputDisplay = rawPricing.outputDisplay ?? null;
+  if (
+    input === null &&
+    output === null &&
+    cachedInput === null &&
+    cacheWrite === null &&
+    !inputDisplay &&
+    !outputDisplay
+  ) {
+    return null;
+  }
+  return {
+    currency: rawPricing.currency ?? "USD",
+    inputPerMillionTokens: input,
+    outputPerMillionTokens: output,
+    cachedInputReadPerMillionTokens: cachedInput,
+    cachedInputWritePerMillionTokens: cacheWrite,
+    inputDisplay: inputDisplay ?? (input === null ? null : `$${input.toFixed(input < 1 ? 4 : 2)}`),
+    outputDisplay: outputDisplay ?? (output === null ? null : `$${output.toFixed(output < 1 ? 4 : 2)}`),
+    status:
+      rawPricing.status ??
+      (input !== null || output !== null || inputDisplay || outputDisplay ? "fresh" : "unavailable"),
+    sourceUrl: rawPricing.sourceUrl ?? sourceUrl,
+    verifiedAt: rawPricing.verifiedAt ?? nowIso(),
+    raw: rawPricing.raw ?? rawPricing
+  };
+}
+
+function resolvedPricing(raw, configured, pricingCatalog, sourceUrl = null) {
+  const configuredPricing = normalizeProviderPricing(configured?.pricing, sourceUrl);
+  if (configuredPricing) return configuredPricing;
+  if (pricingCatalog?.has(raw.id ?? raw.name ?? raw.model))
+    return pricingCatalog.get(raw.id ?? raw.name ?? raw.model);
+  const alias = configured?.aliasFor ? pricingCatalog?.get(configured.aliasFor) : null;
+  if (alias) return alias;
+  return normalizeProviderPricing(raw.pricing ?? raw.price ?? null, sourceUrl);
+}
+
+function normalizeModel({
+  providerId,
+  raw,
+  configured,
+  config,
+  source,
+  pricingCatalog,
+  pricingSourceUrl = null
+}) {
   const providerModelId = String(raw.id ?? raw.name ?? raw.model ?? "").trim();
   if (!providerModelId) {
     return { error: { code: "missing_model_id", message: "Provider model record did not include an id." } };
@@ -275,7 +342,7 @@ function normalizeModel({ providerId, raw, configured, config, source }) {
     supportedDataTypes,
     capabilities,
     limits: limitsFromRaw(raw),
-    pricing: raw.pricing ?? raw.price ?? null,
+    pricing: resolvedPricing(raw, configured, pricingCatalog, pricingSourceUrl),
     regionalAvailability: raw.regions ?? raw.regional_availability ?? null,
     requiredApiVersion: raw.required_api_version ?? raw.requiredApiVersion ?? null,
     capabilityConfidence,
@@ -298,7 +365,15 @@ function normalizeModel({ providerId, raw, configured, config, source }) {
   };
 }
 
-function normalizePayload({ providerId, payloads, provider, config, source }) {
+function normalizePayload({
+  providerId,
+  payloads,
+  provider,
+  config,
+  source,
+  pricingCatalog,
+  pricingSourceUrl = null
+}) {
   const configuredById = configuredMap(provider);
   const seen = new Set();
   const models = [];
@@ -318,7 +393,9 @@ function normalizePayload({ providerId, payloads, provider, config, source }) {
         raw,
         configured: configuredById.get(String(raw?.id ?? raw?.name ?? "")),
         config,
-        source
+        source,
+        pricingCatalog,
+        pricingSourceUrl
       });
       if (normalized.error) {
         validationFailures.push(normalized.error);
@@ -339,7 +416,13 @@ function normalizePayload({ providerId, payloads, provider, config, source }) {
   return { models, validationFailures };
 }
 
-function configuredFallbackModels(provider, config, source = "configured-fallback") {
+function configuredFallbackModels(
+  provider,
+  config,
+  source = "configured-fallback",
+  pricingCatalog = new Map(),
+  pricingSourceUrl = null
+) {
   const models = [];
   const validationFailures = [];
   for (const configured of provider.models ?? []) {
@@ -354,7 +437,9 @@ function configuredFallbackModels(provider, config, source = "configured-fallbac
       raw,
       configured,
       config,
-      source
+      source,
+      pricingCatalog,
+      pricingSourceUrl
     });
     if (normalized.error) validationFailures.push(normalized.error);
     else models.push(normalized.model);
@@ -362,7 +447,18 @@ function configuredFallbackModels(provider, config, source = "configured-fallbac
   return { models, validationFailures };
 }
 
-async function discoverPaged({ providerId, baseUrl, headers, provider, config, fetchImpl, logger, runId }) {
+async function discoverPaged({
+  providerId,
+  baseUrl,
+  headers,
+  provider,
+  config,
+  fetchImpl,
+  logger,
+  runId,
+  pricingCatalog,
+  pricingSourceUrl
+}) {
   const payloads = [];
   const seenPageTokens = new Set();
   let url = new URL(baseUrl);
@@ -405,41 +501,64 @@ async function discoverPaged({ providerId, baseUrl, headers, provider, config, f
   }
   return {
     rawResponse: payloads.length === 1 ? payloads[0] : payloads,
-    ...normalizePayload({ providerId, payloads, provider, config, source: "live" })
+    ...normalizePayload({
+      providerId,
+      payloads,
+      provider,
+      config,
+      source: "live",
+      pricingCatalog,
+      pricingSourceUrl
+    })
   };
 }
 
-function credential(providerId) {
-  const env = API_KEY_ENV_BY_PROVIDER[providerId];
-  return env ? process.env[env] : undefined;
+function credential(providerId, runtimeCredentials) {
+  const definition = providerCredentialDefinition(providerId);
+  return definition?.secretName ? runtimeCredentials?.get(definition.secretName) || undefined : undefined;
 }
 
 function bearerHeaders(apiKey) {
   return apiKey ? { authorization: `Bearer ${apiKey}` } : {};
 }
 
-function adapter(providerId, { dynamic = true, url, headers = (apiKey) => bearerHeaders(apiKey) } = {}) {
+function adapter(
+  providerId,
+  { dynamic = true, url, headers = (apiKey) => bearerHeaders(apiKey), runtimeCredentials = null } = {}
+) {
   return {
     providerId,
     dynamic,
-    async discover({ provider, config, fetchImpl, logger, runId }) {
+    async discover({ provider, config, fetchImpl, logger, runId, pricingCatalog, pricingSourceUrl }) {
       if (!dynamic) {
         return {
           status: "skipped",
           source: "configured-fallback",
           fallbackReason: "dynamic_discovery_unsupported",
           rawResponse: null,
-          ...configuredFallbackModels(provider, config)
+          ...configuredFallbackModels(
+            provider,
+            config,
+            "configured-fallback",
+            pricingCatalog,
+            pricingSourceUrl
+          )
         };
       }
-      const apiKey = credential(providerId);
+      const apiKey = credential(providerId, runtimeCredentials);
       if (!apiKey && providerId !== "custom") {
         return {
           status: "skipped",
           source: "configured-fallback",
           fallbackReason: "missing_credentials",
           rawResponse: null,
-          ...configuredFallbackModels(provider, config)
+          ...configuredFallbackModels(
+            provider,
+            config,
+            "configured-fallback",
+            pricingCatalog,
+            pricingSourceUrl
+          )
         };
       }
       try {
@@ -451,7 +570,9 @@ function adapter(providerId, { dynamic = true, url, headers = (apiKey) => bearer
           config,
           fetchImpl,
           logger,
-          runId
+          runId,
+          pricingCatalog,
+          pricingSourceUrl
         });
         return {
           status: "success",
@@ -479,20 +600,22 @@ function adapter(providerId, { dynamic = true, url, headers = (apiKey) => bearer
   };
 }
 
-export function createProviderDiscoveryAdapters() {
+export function createProviderDiscoveryAdapters({ runtimeCredentials = null } = {}) {
   return {
-    openai: adapter("openai", { url: "https://api.openai.com/v1/models" }),
+    openai: adapter("openai", { url: "https://api.openai.com/v1/models", runtimeCredentials }),
     anthropic: adapter("anthropic", {
       url: "https://api.anthropic.com/v1/models",
+      runtimeCredentials,
       headers: (apiKey) => ({
         "x-api-key": apiKey,
         "anthropic-version": "2023-06-01"
       })
     }),
-    xai: adapter("xai", { url: "https://api.x.ai/v1/models" }),
-    venice: adapter("venice", { url: "https://api.venice.ai/api/v1/models" }),
-    lumaai: adapter("lumaai", { dynamic: false }),
+    xai: adapter("xai", { url: "https://api.x.ai/v1/models", runtimeCredentials }),
+    venice: adapter("venice", { url: "https://api.venice.ai/api/v1/models", runtimeCredentials }),
+    lumaai: adapter("lumaai", { dynamic: false, runtimeCredentials }),
     custom: adapter("custom", {
+      runtimeCredentials,
       url() {
         const configured = envString("AI_CUSTOM_BASE_URL", "CUSTOM_PROVIDER_BASE_URL");
         if (!configured)

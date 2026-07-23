@@ -21,7 +21,9 @@ export function createBatchManager({
   providerRegistry,
   logger,
   cacheRepository,
-  browserLauncher
+  browserLauncher,
+  runtimeCredentials,
+  shutdownController = null
 }) {
   const active = new Map();
 
@@ -41,12 +43,13 @@ export function createBatchManager({
     );
     const delayMs = clampNumber(options.delayMs, 0, config.ai.maxDelayMs, config.ai.defaultDelayMs);
     const state = { cancelRequested: false };
+    const shutdownSignal = shutdownController?.signal ?? null;
     active.set(jobId, state);
 
     async function worker() {
       while (queue.length > 0) {
         const latestJob = repositories.jobs.get(jobId);
-        if (state.cancelRequested || latestJob?.cancelRequested) break;
+        if (state.cancelRequested || latestJob?.cancelRequested || shutdownSignal?.aborted) break;
         const record = queue.shift();
         repositories.jobs.increment(jobId, { queued: -1, processing: 1 });
         const result = repositories.results.createProcessing({
@@ -69,21 +72,36 @@ export function createBatchManager({
                 researchEnabled: options.researchEnabled,
                 config,
                 providerRegistry,
+                runtimeCredentials,
                 cacheRepository,
                 browserLauncher,
-                logger
+                logger,
+                signal: shutdownSignal
               }),
             config,
-            logger
+            logger,
+            shutdownSignal
           );
           repositories.results.saveCompleted(result.id, payload);
           repositories.jobs.increment(jobId, { processing: -1, completed: 1 });
         } catch (error) {
+          if (shutdownSignal?.aborted) {
+            repositories.results.saveFailed(result.id, error);
+            repositories.jobs.increment(jobId, { processing: -1, failed: 1 });
+            break;
+          }
           logger.warn({ err: error, recordId: record.id, jobId }, "Record processing failed");
           repositories.results.saveFailed(result.id, error);
           repositories.jobs.increment(jobId, { processing: -1, failed: 1 });
         }
-        if (delayMs > 0) await sleep(delayMs);
+        if (delayMs > 0) {
+          try {
+            await sleep(delayMs, shutdownSignal);
+          } catch (error) {
+            if (shutdownSignal?.aborted) break;
+            throw error;
+          }
+        }
       }
     }
 

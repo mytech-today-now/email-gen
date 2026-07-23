@@ -1,6 +1,6 @@
 {
   "name": "ai-batch-personalizer",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Local-first AI batch personalization app for prompt-templated prospect emails.",
   "type": "module",
   "private": true,
@@ -18,12 +18,25 @@
     "test:edge": "cross-env NODE_ENV=test AI_MOCK=true vitest run tests/edge",
     "test:security": "cross-env NODE_ENV=test AI_MOCK=true vitest run tests/security",
     "test:e2e": "cross-env NODE_ENV=test AI_MOCK=true playwright test",
+    "test:e2e:section": "node scripts/test-e2e-section.mjs",
+    "test:e2e:01": "node scripts/test-e2e-section.mjs 01",
+    "test:e2e:02": "node scripts/test-e2e-section.mjs 02",
+    "test:e2e:03": "node scripts/test-e2e-section.mjs 03",
+    "test:e2e:04": "node scripts/test-e2e-section.mjs 04",
+    "test:e2e:live": "node scripts/test-e2e-section.mjs 04",
+    "test:credentials:install": "node scripts/test-credentials.js install",
+    "test:credentials:list": "node scripts/test-credentials.js list",
+    "test:credentials:remove": "node scripts/test-credentials.js remove",
+    "test:credentials:remove-all": "node scripts/test-credentials.js remove-all",
     "test:coverage": "cross-env NODE_ENV=test AI_MOCK=true vitest run --coverage",
+    "verify": "node scripts/verify.mjs",
+    "scan:secrets": "node scripts/scan-secrets.js",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "0.91.1",
     "@e965/xlsx": "^0.20.3",
     "acorn": "^8.15.0",
     "ai-powered": "0.3.2",
@@ -33,18 +46,24 @@
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "express-rate-limit": "^8.3.1",
+    "fflate": "^0.8.3",
     "helmet": "^8.1.0",
+    "highlight.js": "^11.11.1",
     "ipaddr.js": "^2.2.0",
+    "juice": "^12.1.1",
+    "keytar": "^7.9.0",
     "multer": "^2.0.2",
     "pino": "^10.3.1",
     "pino-pretty": "^13.1.3",
     "playwright": "^1.61.1",
+    "resend": "^6.17.2",
     "rotating-file-stream": "^3.2.7",
     "sanitize-html": "^2.17.0",
     "undici": "^7.16.0",
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.57.0",
     "@vitest/coverage-v8": "^4.1.2",
@@ -52,7 +71,11 @@
     "eslint": "^10.1.0",
     "globals": "^16.5.0",
     "prettier": "^3.8.1",
+    "selfsigned": "^5.5.0",
     "supertest": "^7.1.4",
     "vitest": "^4.1.2"
+  },
+  "overrides": {
+    "@anthropic-ai/sdk": "$@anthropic-ai/sdk"
   }
 }

@@ -1,5 +1,6 @@
 import { sanitizeEmailHtml } from "../output/sanitizer.js";
 import { markdownToHtml, textToHtml } from "./fallbacks.js";
+import { prepareAddendumHtml } from "../output/addendumPreparer.js";
 
 export function renderAddendum(addendum) {
   if (!addendum) {
@@ -11,6 +12,6 @@ export function renderAddendum(addendum) {
   else if (addendum.mediaType === "text/plain") html = textToHtml(addendum.content);
   else return { enabled: true, html: "", fallbackHtml: "", warning: "Unsupported addendum media type." };
 
-  const safe = sanitizeEmailHtml(html);
+  const safe = addendum.mediaType === "text/html" ? prepareAddendumHtml(html) : sanitizeEmailHtml(html);
   return { enabled: true, html: safe, fallbackHtml: safe, warning: null };
 }
